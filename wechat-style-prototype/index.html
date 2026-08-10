@@ -365,6 +365,18 @@
       box-shadow: 0 4px 0 currentColor, 0 8px 0 currentColor;
     }
     .audit-header-icon::after { display: none; }
+    .identify-header-icon {
+      display: grid;
+      place-items: center;
+      width: 19px;
+      height: 19px;
+      border: 1.5px solid currentColor;
+      border-radius: 5px;
+    }
+    .identify-header-icon::before {
+      content: '识';
+      font: 700 12px/1 -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
     .format-header-icon { width: 20px; height: 20px; }
     .format-header-icon::before {
       content: '';
@@ -1279,6 +1291,7 @@
       .header-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; gap: 7px; }
       .header-actions > * { width: 100%; min-width: 0; padding-inline: 6px; }
       .header-actions #search-toggle,
+      .header-actions #basic-identify,
       .header-actions #validate,
       .header-actions #format-all { display: none; }
       .mobile-preview-link { display: none; }
@@ -1339,7 +1352,7 @@
         top: 0;
         z-index: 16;
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 7px;
         padding: 8px 10px 7px;
         border-bottom: 1px solid var(--line);
@@ -1467,6 +1480,7 @@
         <button id="reset-sample" class="header-icon-control" type="button" aria-label="还原最早粘贴的版本" data-tooltip="还原到最早粘贴版本"><span class="header-symbol restore-header-icon" aria-hidden="true"></span></button>
         <a class="header-action-link header-icon-control full-version-link" href="index.html?view=desktop" target="_top" aria-label="PC 端完整版" title="PC 端完整版"><span class="header-symbol pc-header-icon" aria-hidden="true"></span></a>
         <button id="search-toggle" class="header-icon-control" type="button" aria-label="搜索全文" aria-expanded="false" aria-controls="document-search" data-tooltip="搜索全文"><span class="header-symbol search-header-icon" aria-hidden="true"></span></button>
+        <button id="basic-identify" class="header-icon-control" type="button" aria-label="基础识别作者、章节标题与正文" data-tooltip="只识别作者、带序号标题与正文"><span class="header-symbol identify-header-icon" aria-hidden="true"></span></button>
         <button id="validate" class="header-icon-control" type="button" aria-label="格式审核" data-tooltip="检查并定位格式偏差"><span class="header-symbol audit-header-icon" aria-hidden="true"></span></button>
         <button id="format-all" class="primary header-icon-control" type="button" aria-label="自动排版并检查" data-tooltip="自动排版并检查"><span class="header-symbol format-header-icon" aria-hidden="true"></span></button>
       </div>
@@ -1524,6 +1538,7 @@
     <section class="workspace">
       <article class="editor-card">
         <div class="mobile-action-bar" aria-label="移动端快捷操作">
+          <button type="button" data-mobile-action="identify" aria-label="基础识别作者、章节标题与正文">识别</button>
           <button type="button" data-mobile-action="format">自动排版</button>
           <button type="button" data-mobile-action="validate">检查</button>
           <button class="primary" type="button" data-mobile-action="copy">复制富文本</button>
@@ -1670,8 +1685,8 @@
     <p>作者：松壑</p>
     <p>欢迎使用公众号操作台。你正在看到的是一篇可以随时修改或删除的示例文章，它会带你快速认识从原文到微信草稿的完整流程。</p>
     <p>这篇新手指引同时展示了正文、章节标题、主题色重点句和引用等格式。当你开始编辑或点击“清空开始”后，它不会再在以后刷新时出现。</p>
-    <h2>一、先让 Agent 识别文章结构</h2>
-    <p>把原文与操作台提供的提示词一起发给外部 Agent。Agent 会根据语义识别作者、导语、章节标题、正文和少量重点句，再返回可以直接填入的 JSON。</p>
+    <h2>一、先识别文章结构</h2>
+    <p>如果原文已经使用“一、”“1.”或“第一章”等明确序号，可以直接点击“基础识别”。操作台会在本地区分作者、章节标题和正文；需要语义判断、重点句或引用时，再使用外部 Agent。</p>
     <p><strong>结构识别的目的不是改写你的观点，而是让不同层级的内容获得稳定、统一的样式。</strong></p>
     <h2>二、在编辑区完成最后微调</h2>
     <p>内容填入后，可以框选文字调整正文、标题、字体、斜体、引用或对齐方式。没有框选内容时，字号、标题格式和序号会作为全文设置使用。</p>
@@ -1728,6 +1743,7 @@
       const searchPreviousButton = document.getElementById('search-previous');
       const searchNextButton = document.getElementById('search-next');
       const searchCloseButton = document.getElementById('search-close');
+      const basicIdentifyButton = document.getElementById('basic-identify');
       const mobilePreviewToggle = document.getElementById('mobile-preview-toggle');
       const mobilePublishPreview = document.getElementById('mobile-publish-preview');
       const publishPreviewScreen = document.getElementById('publish-preview-screen');
@@ -1793,6 +1809,8 @@
 
       const titlePattern = /^(?:第[一二三四五六七八九十百零\d]+(?:章|节|部分|篇)|[一二三四五六七八九十百零\d]+[\.．、])\s*\S+/;
       const authorPattern = /^(?:作者|撰文|文|来源|by)\s*[：:／/]\s*\S+/i;
+      const basicAuthorPattern = /^(?:作者|撰文|执笔|文|by)\s*(?:[：:／/]\s*|\s+)\S+/i;
+      const basicNumberedTitlePattern = /^(?:第[一二三四五六七八九十百零\d]+(?:章|节|部分|篇|讲|单元)|[一二三四五六七八九十百零]+[、.．]|\d{1,3}[.．、](?:\s+|(?=[^\d%]))|[（(](?:[一二三四五六七八九十百零]+|\d{1,3})[）)])\s*\S*/;
 
       function applyAppearance(modeId) {
         const mode = APPEARANCE_MODES.find((item) => item.id === modeId) || APPEARANCE_MODES[0];
@@ -2431,9 +2449,81 @@
         return tagIsHeading || explicitRole || semanticCandidate;
       }
 
+      function isLikelyBasicTitle(text) {
+        const normalized = String(text || '').replace(/\s+/g, ' ').trim();
+        if (!normalized || normalized.length > 60) return false;
+        if (/[。！？!?；;]/.test(normalized)) return false;
+        return basicNumberedTitlePattern.test(normalized);
+      }
+
+      function basicIdentifyStructure(feedbackButton = basicIdentifyButton) {
+        dismissGuidanceSample();
+        rememberOriginalArticle(false);
+        convertMarkdownEmphasis(editor);
+        normalizeTopLevelBlocks();
+
+        const counts = { author: 0, title: 0, body: 0 };
+        [...editor.children].forEach((sourceBlock) => {
+          if (sourceBlock.hasAttribute('data-guidance-marker')) return;
+          let block = sourceBlock;
+          if (block.tagName !== 'P') {
+            const paragraph = document.createElement('p');
+            paragraph.innerHTML = block.innerHTML;
+            block.replaceWith(paragraph);
+            block = paragraph;
+          }
+
+          const text = block.textContent.replace(/\s+/g, ' ').trim();
+          block.removeAttribute('data-quote-previous-role');
+          block.removeAttribute('data-title-original');
+          block.removeAttribute('data-title-base');
+
+          if (basicAuthorPattern.test(text)) {
+            block.dataset.wechatRole = 'author';
+            block.setAttribute('style', authorStyle());
+            counts.author += 1;
+            return;
+          }
+
+          if (isLikelyBasicTitle(text)) {
+            block.dataset.wechatRole = 'chapter-title';
+            block.dataset.titleOriginal = text;
+            block.dataset.titleBase = stripTitleNumber(text) || text;
+            block.setAttribute('style', titleStyle());
+            block.textContent = '';
+            const span = document.createElement('span');
+            span.setAttribute('style', `font-size:${currentTitleSize}px;line-height:1.35;color:${currentTitleColor};font-weight:700;font-family:${selectedFontStack};`);
+            span.textContent = text;
+            block.appendChild(span);
+            counts.title += 1;
+            return;
+          }
+
+          block.dataset.wechatRole = 'body';
+          block.setAttribute('style', bodyStyle(block.style.fontFamily || selectedFontStack));
+          counts.body += 1;
+        });
+
+        applyTitleNumbering(currentTitleNumberStyle, false);
+        syncThemeColor();
+        updateOutput();
+        validateFormat();
+        const originalTooltip = '只识别作者、带序号标题与正文';
+        const resultText = `已识别：作者 ${counts.author} · 标题 ${counts.title} · 正文 ${counts.body}`;
+        feedbackButton?.setAttribute('data-tooltip', resultText);
+        const originalLabel = feedbackButton?.textContent;
+        if (feedbackButton?.matches('[data-mobile-action]')) feedbackButton.textContent = `标题 ${counts.title}`;
+        window.setTimeout(() => {
+          feedbackButton?.setAttribute('data-tooltip', originalTooltip);
+          if (feedbackButton?.matches('[data-mobile-action]')) feedbackButton.textContent = originalLabel;
+        }, 2600);
+        return counts;
+      }
+
       function stripTitleNumber(text) {
         return text
-          .replace(/^第[一二三四五六七八九十百零\d]+(?:章|节|部分|篇)\s*/, '')
+          .replace(/^第[一二三四五六七八九十百零\d]+(?:章|节|部分|篇|讲|单元)\s*/, '')
+          .replace(/^[（(](?:[一二三四五六七八九十百零]+|\d{1,3})[）)]\s*/, '')
           .replace(/^[一二三四五六七八九十百零\d]+[\.\uff0e、]\s*/, '')
           .trim();
       }
@@ -3806,6 +3896,7 @@
       }
 
       document.getElementById('format-all').addEventListener('click', formatAll);
+      basicIdentifyButton.addEventListener('click', () => basicIdentifyStructure(basicIdentifyButton));
       document.getElementById('validate').addEventListener('click', validateFormat);
       document.getElementById('reset-sample').addEventListener('click', restoreOriginalArticle);
       copyButton.addEventListener('click', () => copyRichText(copyButton));
@@ -3984,6 +4075,7 @@
 
       document.querySelectorAll('[data-mobile-action]').forEach((button) => {
         button.addEventListener('click', () => {
+          if (button.dataset.mobileAction === 'identify') basicIdentifyStructure(button);
           if (button.dataset.mobileAction === 'format') formatAll();
           if (button.dataset.mobileAction === 'validate') validateFormat();
           if (button.dataset.mobileAction === 'copy') copyRichText(button);
