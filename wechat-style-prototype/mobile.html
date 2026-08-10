@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>公众号操作台·移动版</title>
+  <script>
+    const target = new URL('index.html', window.location.href);
+    target.searchParams.set('view', 'mobile');
+    window.location.replace(target.href);
+  </script>
+</head>
+<body>
+  <p><a href="index.html?view=mobile">进入公众号操作台移动版</a></p>
+</body>
+</html>

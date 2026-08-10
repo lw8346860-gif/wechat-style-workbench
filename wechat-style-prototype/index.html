@@ -1,0 +1,3923 @@
+<!doctype html>
+<html lang="zh-CN" data-color-mode="system">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>
+    const requestedPageView = new URLSearchParams(window.location.search).get('view');
+    if (requestedPageView === 'desktop') {
+      document.querySelector('meta[name="viewport"]').setAttribute('content', 'width=1200');
+      document.documentElement.dataset.pageView = 'desktop';
+    } else if (requestedPageView === 'mobile') {
+      document.documentElement.dataset.pageView = 'mobile';
+    }
+  </script>
+  <title>公众号操作台</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --orange: #ff6827;
+      --orange-soft: #fff2eb;
+      --ink: #292724;
+      --muted: #77716a;
+      --line: #e8e2d9;
+      --paper: #ffffff;
+      --canvas: #f4f1eb;
+      --ok: #227a52;
+      --warn: #ad5a19;
+      --control: #ffffff;
+      --surface-cool: #f8fafc;
+      --step-bg: #eaf0f6;
+      --step-ink: #486580;
+      --soft-surface: #f7f7f7;
+      --quick-a: #fffaf7;
+      --quick-b: #ffffff;
+      --toolbar-bg: rgba(255, 255, 255, 0.96);
+      --editor-wash-a: #fdfcf9;
+      --editor-wash-b: #f3f0ea;
+      --control-hover: #f5f2ed;
+      --control-hover-ink: #24211e;
+      --status-bg: #f2f4f2;
+      --warning-bg: #fff6eb;
+      --code-bg: #faf9f7;
+      --article-paper: #ffffff;
+      --article-ink: #333333;
+      --article-author: #888888;
+      --article-secondary: #666666;
+      --article-line: #eee9e1;
+    }
+
+    :root[data-color-mode="dark"] {
+      color-scheme: dark;
+      --ink: #eee9e2;
+      --muted: #aaa299;
+      --line: #403c37;
+      --paper: #211f1c;
+      --canvas: #151412;
+      --ok: #6bc99a;
+      --warn: #e0a06c;
+      --control: #2a2825;
+      --surface-cool: #1b2025;
+      --step-bg: #2a3743;
+      --step-ink: #b8d2e8;
+      --soft-surface: #262421;
+      --quick-a: #241c18;
+      --quick-b: #211f1c;
+      --toolbar-bg: rgba(33, 31, 28, 0.96);
+      --editor-wash-a: #2a2722;
+      --editor-wash-b: #171614;
+      --control-hover: #34312d;
+      --control-hover-ink: #ffffff;
+      --status-bg: #1e2b25;
+      --warning-bg: #34261c;
+      --code-bg: #191816;
+      --article-paper: #232323;
+      --article-ink: rgba(255, 255, 255, .82);
+      --article-author: rgba(255, 255, 255, .46);
+      --article-secondary: rgba(255, 255, 255, .68);
+      --article-line: #383838;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root[data-color-mode="system"] {
+        color-scheme: dark;
+        --ink: #eee9e2;
+        --muted: #aaa299;
+        --line: #403c37;
+        --paper: #211f1c;
+        --canvas: #151412;
+        --ok: #6bc99a;
+        --warn: #e0a06c;
+        --control: #2a2825;
+        --surface-cool: #1b2025;
+        --step-bg: #2a3743;
+        --step-ink: #b8d2e8;
+        --soft-surface: #262421;
+        --quick-a: #241c18;
+        --quick-b: #211f1c;
+        --toolbar-bg: rgba(33, 31, 28, 0.96);
+        --editor-wash-a: #2a2722;
+        --editor-wash-b: #171614;
+        --control-hover: #34312d;
+        --control-hover-ink: #ffffff;
+        --status-bg: #1e2b25;
+        --warning-bg: #34261c;
+        --code-bg: #191816;
+        --article-paper: #232323;
+        --article-ink: rgba(255, 255, 255, .82);
+        --article-author: rgba(255, 255, 255, .46);
+        --article-secondary: rgba(255, 255, 255, .68);
+        --article-line: #383838;
+      }
+    }
+
+    * { box-sizing: border-box; }
+    .visually-hidden {
+      position: absolute !important;
+      width: 1px !important;
+      height: 1px !important;
+      padding: 0 !important;
+      margin: -1px !important;
+      overflow: hidden !important;
+      clip: rect(0, 0, 0, 0) !important;
+      white-space: nowrap !important;
+      border: 0 !important;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--canvas);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    button {
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      padding: 8px 12px;
+      background: var(--control);
+      color: var(--ink);
+      font: inherit;
+      font-size: 14px;
+      font-weight: 650;
+      cursor: pointer;
+    }
+
+    button:hover { border-color: var(--muted); }
+    button.primary { border-color: var(--orange); background: var(--orange); color: #fff; }
+    button.primary:hover { filter: brightness(.92); }
+
+    .app-shell {
+      width: min(1460px, 100%);
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .topbar {
+      position: relative;
+      z-index: 100;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 18px;
+    }
+
+    .eyebrow {
+      margin: 0 0 5px;
+      color: var(--orange);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .maker-meta {
+      position: absolute;
+      top: -15px;
+      right: 0;
+      margin: 0;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .02em;
+    }
+
+    .maker-meta span { margin-left: 6px; color: var(--orange); }
+
+    h1 { margin: 0; font-size: 25px; line-height: 1.25; }
+    .brand-title-row { display: flex; align-items: center; gap: 9px; }
+    .wechat-assistant-logo {
+      position: relative;
+      display: inline-block;
+      width: 29px;
+      height: 29px;
+      flex: 0 0 29px;
+      border-radius: 9px;
+      background: #07c160;
+      box-shadow: 0 5px 13px rgba(7, 193, 96, .2), inset 0 0 0 1px rgba(0, 0, 0, .04);
+    }
+    .wechat-assistant-logo::before,
+    .wechat-assistant-logo::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      background-color: #fff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, .08);
+    }
+    .wechat-assistant-logo::before {
+      left: 4px;
+      top: 6px;
+      width: 14px;
+      height: 11px;
+      background-image:
+        radial-gradient(circle at 35% 45%, #07c160 0 1.1px, transparent 1.3px),
+        radial-gradient(circle at 65% 45%, #07c160 0 1.1px, transparent 1.3px);
+    }
+    .wechat-assistant-logo::after {
+      right: 4px;
+      bottom: 5px;
+      width: 12px;
+      height: 9px;
+      background-image:
+        radial-gradient(circle at 35% 45%, #07c160 0 1px, transparent 1.2px),
+        radial-gradient(circle at 65% 45%, #07c160 0 1px, transparent 1.2px);
+    }
+
+    .subline {
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .header-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+    .header-action-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      padding: 8px 12px;
+      background: var(--control);
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 650;
+      line-height: normal;
+      text-decoration: none;
+    }
+    .header-action-link:hover { border-color: var(--muted); }
+    .header-actions .full-version-link { display: none; }
+    .header-icon-control {
+      width: 40px;
+      min-width: 40px;
+      height: 36px;
+      padding: 0;
+      display: inline-grid;
+      place-items: center;
+    }
+    .appearance-toggle { gap: 0; }
+    .appearance-icon {
+      display: block;
+      width: 18px;
+      height: 18px;
+      border: 1.5px solid currentColor;
+      border-radius: 50%;
+      background: linear-gradient(90deg, #fff 50%, #1e1d1b 50%);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.12);
+    }
+    .appearance-icon[data-mode="light"] { background: #fff; }
+    .appearance-icon[data-mode="dark"] { background: #1e1d1b; }
+
+    .header-symbol { position: relative; display: block; color: currentColor; }
+    .phone-header-icon {
+      width: 13px;
+      height: 21px;
+      border: 2px solid currentColor;
+      border-radius: 3px;
+    }
+    .phone-header-icon::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      bottom: 2px;
+      width: 3px;
+      height: 1.5px;
+      transform: translateX(-50%);
+      border-radius: 2px;
+      background: currentColor;
+    }
+    .pc-header-icon {
+      width: 20px;
+      height: 14px;
+      margin-bottom: 4px;
+      border: 2px solid currentColor;
+      border-radius: 2px;
+    }
+    .pc-header-icon::before {
+      content: '';
+      position: absolute;
+      left: 8px;
+      bottom: -6px;
+      width: 2px;
+      height: 5px;
+      background: currentColor;
+    }
+    .pc-header-icon::after {
+      content: '';
+      position: absolute;
+      left: 4px;
+      bottom: -7px;
+      width: 10px;
+      height: 2px;
+      border-radius: 2px;
+      background: currentColor;
+    }
+    .restore-header-icon {
+      width: 21px;
+      height: 21px;
+      display: grid;
+      place-items: center;
+      font: 400 23px/1 "Segoe UI Symbol", "Arial Unicode MS", sans-serif;
+    }
+    .restore-header-icon::before { content: '↶'; transform: translateY(-1px); }
+    .search-header-icon {
+      width: 15px;
+      height: 15px;
+      margin: -3px 0 0 -3px;
+      border: 2px solid currentColor;
+      border-radius: 50%;
+    }
+    .search-header-icon::after {
+      content: '';
+      position: absolute;
+      right: -7px;
+      bottom: -5px;
+      width: 8px;
+      height: 2px;
+      border-radius: 2px;
+      background: currentColor;
+      transform: rotate(45deg);
+      transform-origin: left center;
+    }
+    .audit-header-icon {
+      width: 18px;
+      height: 18px;
+      border: 2px solid currentColor;
+      border-radius: 5px;
+    }
+    .audit-header-icon::before {
+      content: '';
+      position: absolute;
+      left: 4px;
+      top: 4px;
+      width: 6px;
+      height: 1.5px;
+      border-radius: 2px;
+      background: currentColor;
+      box-shadow: 0 4px 0 currentColor, 0 8px 0 currentColor;
+    }
+    .audit-header-icon::after { display: none; }
+    .format-header-icon { width: 20px; height: 20px; }
+    .format-header-icon::before {
+      content: '';
+      position: absolute;
+      left: 2px;
+      bottom: 4px;
+      width: 14px;
+      height: 2px;
+      border-radius: 4px;
+      background: currentColor;
+      transform: rotate(-45deg);
+      transform-origin: center;
+    }
+    .format-header-icon::after {
+      content: '✦';
+      position: absolute;
+      top: -3px;
+      right: -1px;
+      font: 700 11px/1 Georgia, serif;
+    }
+
+    .document-search {
+      position: fixed;
+      right: 24px;
+      top: 118px;
+      z-index: 50;
+      display: grid;
+      grid-template-columns: minmax(180px, 250px) auto repeat(3, 30px);
+      align-items: center;
+      gap: 5px;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: var(--control);
+      box-shadow: 0 18px 45px rgba(42, 34, 26, .18);
+    }
+    .document-search[hidden] { display: none; }
+    .document-search input {
+      width: 100%;
+      height: 30px;
+      min-width: 0;
+      padding: 5px 9px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      outline: none;
+      background: var(--paper);
+      color: var(--ink);
+      font: inherit;
+      font-size: 13px;
+    }
+    .document-search input:focus { border-color: var(--orange); box-shadow: 0 0 0 2px color-mix(in srgb, var(--orange) 15%, transparent); }
+    .document-search-count { min-width: 42px; color: var(--muted); font-size: 11px; text-align: center; font-variant-numeric: tabular-nums; }
+    .document-search button { width: 30px; height: 30px; padding: 0; border-radius: 7px; font-size: 15px; }
+    .document-search button:disabled { opacity: .35; cursor: default; }
+    ::highlight(document-search-all) { background-color: rgba(255, 218, 105, .48); }
+    ::highlight(document-search-current) { background-color: #ffb24d; color: #211a13; text-decoration: underline; }
+
+    .mobile-publish-preview {
+      position: fixed;
+      right: 24px;
+      top: 118px;
+      z-index: 49;
+      width: 342px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: var(--control);
+      box-shadow: 0 24px 65px rgba(34, 28, 22, .25);
+    }
+    .mobile-publish-preview[hidden] { display: none; }
+    .mobile-publish-preview-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 2px 4px 9px;
+    }
+    .mobile-publish-preview-head strong { font-size: 12px; }
+    .mobile-publish-preview-head span { margin-left: 5px; color: var(--muted); font-size: 10px; font-weight: 500; }
+    .mobile-publish-preview-head button { width: 26px; height: 26px; padding: 0; border: 0; background: transparent; font-size: 17px; }
+    .publish-preview-phone {
+      position: relative;
+      height: min(680px, calc(100vh - 180px));
+      min-height: 480px;
+      padding: 10px;
+      border-radius: 38px;
+      background: #111;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.1);
+    }
+    .publish-preview-phone::before {
+      content: '';
+      position: absolute;
+      top: 18px;
+      left: 50%;
+      z-index: 2;
+      width: 86px;
+      height: 22px;
+      transform: translateX(-50%);
+      border-radius: 14px;
+      background: #070707;
+      pointer-events: none;
+    }
+    .publish-preview-screen {
+      height: 100%;
+      overflow: auto;
+      padding: 0;
+      border-radius: 29px;
+      background: var(--article-paper);
+      color: var(--article-ink);
+      scrollbar-width: thin;
+    }
+    .publish-preview-viewport {
+      width: 390px;
+      min-height: 100%;
+      padding: 48px 20px 44px;
+      background: var(--article-paper);
+      color: var(--article-ink);
+      font-size: 16px;
+      transform-origin: left top;
+    }
+    .publish-preview-viewport > :first-child { margin-top: 0 !important; }
+    .publish-preview-viewport > :not([data-wechat-role="chapter-title"]),
+    .editor-page > :not([data-wechat-role="chapter-title"]) { color: var(--article-ink) !important; }
+    .publish-preview-viewport > :not([data-wechat-role="chapter-title"]) :where(span, font),
+    .editor-page > :not([data-wechat-role="chapter-title"]) :where(span, font) { color: inherit !important; }
+    .publish-preview-screen [data-wechat-role="body"],
+    .editor-page [data-wechat-role="body"] { color: var(--article-ink) !important; }
+    .publish-preview-screen [data-wechat-role="author"],
+    .editor-page [data-wechat-role="author"] { color: var(--article-author) !important; }
+    .publish-preview-screen [data-wechat-role="intro"],
+    .editor-page [data-wechat-role="intro"] { color: var(--article-ink) !important; }
+    .publish-preview-screen [data-wechat-role="quote"],
+    .editor-page [data-wechat-role="quote"] { color: var(--article-secondary) !important; }
+    .publish-preview-screen :is([data-wechat-role="author"], [data-wechat-role="intro"], [data-wechat-role="quote"]) *,
+    .editor-page :is([data-wechat-role="author"], [data-wechat-role="intro"], [data-wechat-role="quote"]) * { color: inherit !important; }
+    .publish-preview-screen :is(strong, b, mark, [data-wechat-role="emphasis"], [data-wechat-role="emphasis-blue"], [data-wechat-role="emphasis-color"]),
+    .editor-page :is(strong, b, mark, [data-wechat-role="emphasis"], [data-wechat-role="emphasis-blue"], [data-wechat-role="emphasis-color"]) { color: var(--orange) !important; }
+    .publish-preview-screen [data-wechat-role="chapter-title"],
+    .editor-page [data-wechat-role="chapter-title"] { color: var(--orange) !important; }
+    .publish-preview-screen [data-wechat-title-part="box"],
+    .editor-page [data-wechat-title-part="box"] { color: #ffffff !important; }
+    .publish-preview-screen [data-wechat-title-part="box"] {
+      display: inline !important;
+      width: auto !important;
+      padding: 2px 5px !important;
+      box-decoration-break: clone;
+      -webkit-box-decoration-break: clone;
+    }
+
+    .agent-intake {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+      align-items: stretch;
+      margin-bottom: 10px;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+    }
+
+    .agent-flow-card,
+    .agent-prompt-card,
+    .intake-learning-card {
+      position: relative;
+      display: grid;
+      grid-template-rows: 16px minmax(0, 1fr);
+      flex: 0 0 62px;
+      gap: 2px;
+      min-width: 0;
+      height: 62px;
+      min-height: 62px;
+      max-height: 62px;
+      padding: 4px 0;
+      overflow: hidden;
+      border: 1px solid color-mix(in srgb, var(--orange) 22%, var(--line));
+      border-radius: 8px;
+      background: linear-gradient(135deg, color-mix(in srgb, var(--orange) 8%, var(--control)), var(--control) 68%);
+      box-shadow: 0 7px 18px color-mix(in srgb, var(--orange) 7%, transparent);
+      transition: border-color .15s ease, box-shadow .15s ease;
+    }
+
+    .agent-module-stack {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      height: 100%;
+    }
+    .agent-prompt-card:focus-within,
+    .agent-flow-card:focus-within,
+    .intake-learning-card:focus-within {
+      border-color: var(--orange);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--orange) 13%, transparent);
+    }
+
+    .agent-prompt-card,
+    .agent-flow-card,
+    .intake-learning-card { align-content: stretch; }
+    .agent-flow-card .agent-help { display: none; }
+    .intake-learning-card .panel-note { display: none; }
+    .intake-learning-card { align-content: start; }
+    .agent-step-head { display: flex; align-items: center; gap: 5px; min-height: 16px; padding: 0 8px; }
+    .agent-step-head strong { font-size: 12px; line-height: 1.15; }
+    .agent-step {
+      display: inline-grid;
+      place-items: center;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--step-bg);
+      color: var(--step-ink);
+      font-size: 9px;
+      font-weight: 800;
+    }
+    .agent-help { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+    .compact-input-wrap,
+    .agent-input-wrap,
+    .style-learning-paste-row {
+      --compact-action-width: 50px;
+      position: static;
+      display: block;
+      min-width: 0;
+      min-height: 0;
+      height: 100%;
+      overflow: visible;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+    }
+    .style-learning-paste-row { --compact-action-width: 50px; }
+
+    .compact-input-field,
+    .agent-input,
+    .style-sample,
+    .agent-prompt-editor {
+      width: 100%;
+      min-height: 0;
+      height: 100%;
+      max-height: 100%;
+      overflow: auto;
+      resize: none;
+      padding: 5px calc(var(--compact-action-width) + 26px) 5px 8px;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      color: var(--ink);
+      outline: none;
+      font: 11px/1.35 -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+      scrollbar-width: thin;
+      scrollbar-color: color-mix(in srgb, var(--muted) 48%, transparent) transparent;
+    }
+    .compact-input-field::-webkit-scrollbar,
+    .agent-input::-webkit-scrollbar,
+    .style-sample::-webkit-scrollbar,
+    .agent-prompt-editor::-webkit-scrollbar { width: 5px; height: 5px; }
+    .compact-input-field::-webkit-scrollbar-thumb,
+    .agent-input::-webkit-scrollbar-thumb,
+    .style-sample::-webkit-scrollbar-thumb,
+    .agent-prompt-editor::-webkit-scrollbar-thumb { border-radius: 5px; background: color-mix(in srgb, var(--muted) 48%, transparent); }
+    .compact-input-field:focus,
+    .agent-input:focus,
+    .style-sample:focus,
+    .agent-prompt-editor:focus {
+      box-shadow: none;
+    }
+    .agent-prompt-editor {
+      color: var(--muted);
+      font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+      font-size: 11px;
+      line-height: 1.35;
+    }
+    .compact-input-wrap > button,
+    .agent-input-wrap > button,
+    .style-learning-paste-row > button {
+      position: absolute;
+      top: 0;
+      right: 16px;
+      bottom: 0;
+      z-index: 2;
+      display: grid;
+      place-items: center;
+      width: var(--compact-action-width);
+      min-width: var(--compact-action-width);
+      height: 24px;
+      margin: auto 0;
+      padding: 0 8px;
+      transform: none;
+      border: 0;
+      border-radius: 6px;
+      font-size: 12px;
+      line-height: 1;
+    }
+    .agent-copy-button { width: var(--compact-action-width); }
+
+    .agent-module-status {
+      display: block;
+      min-height: 0;
+      margin: 3px 6px 0;
+      overflow: hidden;
+      color: var(--ok);
+      font-size: 8px;
+      line-height: 1.25;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .agent-module-status:empty { display: none; }
+
+    .agent-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .agent-flow-card .agent-actions { justify-content: space-between; }
+    .agent-actions small { min-height: 18px; color: var(--ok); font-size: 11px; text-align: center; }
+
+    .style-sample:empty::before { content: attr(data-placeholder); color: #a3adb6; }
+    .panel-note { margin: -2px 0 4px; color: var(--muted); font-size: 10px; line-height: 1.35; }
+    .style-learning-status { color: var(--ok); }
+
+    .quick-component {
+      display: grid;
+      grid-template-columns: minmax(240px, 0.8fr) minmax(300px, 1.2fr) auto;
+      gap: 18px;
+      align-items: center;
+      margin-top: 18px;
+      padding: 18px;
+      border: 1px solid color-mix(in srgb, var(--orange) 24%, var(--line));
+      border-radius: 14px;
+      background: linear-gradient(135deg, color-mix(in srgb, var(--orange) 9%, var(--quick-a)), var(--quick-b) 62%);
+      box-shadow: 0 12px 34px color-mix(in srgb, var(--orange) 9%, transparent);
+    }
+
+    .quick-component h2 { margin: 0 0 6px; font-size: 17px; }
+    .quick-component p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+    .quick-component p.eyebrow { color: var(--orange); }
+
+    .annotation-input {
+      width: 100%;
+      height: 84px;
+      resize: none;
+      overflow-y: auto;
+      padding: 11px 13px;
+      border: 1px solid #e4dfd8;
+      border-radius: 7px;
+      background: var(--soft-surface);
+      color: #777;
+      font: 12px/1 -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+      letter-spacing: 0;
+      scrollbar-color: #c9c3ba transparent;
+    }
+
+    .annotation-input:focus {
+      outline: 2px solid color-mix(in srgb, var(--orange) 18%, transparent);
+      border-color: color-mix(in srgb, var(--orange) 56%, var(--line));
+    }
+
+    .component-action {
+      position: relative;
+      display: grid;
+      justify-items: stretch;
+      align-self: center;
+      gap: 7px;
+      min-width: 188px;
+    }
+
+    .component-action small {
+      position: absolute;
+      top: calc(100% + 5px);
+      right: 0;
+      left: 0;
+      min-height: 17px;
+      color: var(--ok);
+      font-size: 11px;
+      text-align: center;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(560px, 1fr) 350px;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .editor-card,
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--paper);
+      box-shadow: 0 14px 38px rgba(48, 39, 28, 0.06);
+    }
+    .panel { overflow: hidden; }
+    .editor-card { overflow: visible; }
+    .side .panel {
+      border-color: color-mix(in srgb, var(--orange) 22%, var(--line));
+      background: linear-gradient(135deg, color-mix(in srgb, var(--orange) 7%, var(--paper)), var(--paper) 66%);
+      box-shadow: 0 12px 32px color-mix(in srgb, var(--orange) 6%, transparent);
+    }
+    .side .panel > h2,
+    .side .check-panel-head h2 { color: var(--orange); }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 5px;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--line);
+      background: var(--toolbar-bg);
+      position: sticky;
+      top: 8px;
+      z-index: 30;
+      border-radius: 13px 13px 0 0;
+      box-shadow: 0 7px 18px rgba(44, 37, 29, .06);
+      backdrop-filter: blur(14px);
+    }
+    .mobile-action-bar,
+    .mobile-check-state { display: none; }
+
+    .tool-menu { position: relative; }
+    .tool-menu summary {
+      list-style: none;
+      min-height: 30px;
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      padding: 5px 8px;
+      border: 1px solid #ebe6de;
+      border-radius: 7px;
+      background: var(--control);
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 750;
+      cursor: pointer;
+    }
+    .tool-menu summary::-webkit-details-marker { display: none; }
+    .tool-menu summary::after { content: '▾'; margin-left: 3px; color: #a39b91; font-size: 9px; }
+    .size-tool summary,
+    .title-number-menu summary,
+    .indent-menu summary,
+    .current-color-tool,
+    .font-tool { width: 36px; min-width: 36px; height: 30px; padding: 0; justify-content: center; }
+    .size-tool summary { position: relative; padding: 0; }
+    .size-tool summary::after { display: none; }
+    .title-number-menu summary::after,
+    .indent-menu summary::after,
+    .palette-menu summary::after,
+    .font-menu summary::after { display: none; }
+    .tool-menu[open] summary { border-color: #e2a07f; box-shadow: 0 0 0 3px rgba(255, 104, 39, 0.1); }
+    .tool-menu-popover {
+      position: absolute;
+      top: calc(100% + 7px);
+      left: 0;
+      z-index: 20;
+      display: flex;
+      gap: 6px;
+      min-width: max-content;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--control);
+      box-shadow: 0 14px 36px rgba(45, 36, 26, 0.14);
+    }
+    .tool-menu-popover button { min-width: 34px; padding: 6px 9px; }
+
+    .color-swatch-button {
+      width: 22px;
+      min-width: 22px !important;
+      height: 22px;
+      aspect-ratio: 1;
+      flex: 0 0 22px;
+      padding: 0 !important;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      background: var(--swatch-color);
+      box-shadow: 0 0 0 1px #d8d2c9;
+    }
+    .color-swatch-button:hover,
+    .color-swatch-button:focus-visible { box-shadow: 0 0 0 2px var(--swatch-color); }
+    .palette-menu .tool-menu-popover { display: grid; grid-template-columns: repeat(7, 22px); gap: 9px; }
+
+    .current-color-tool { justify-content: center; }
+    #current-color-dot { width: 13px; height: 13px; border-radius: 50%; background: var(--current-theme-color, var(--orange)); box-shadow: 0 0 0 1px rgba(0,0,0,.08); }
+    .font-tool { justify-content: center; font-family: Georgia, "Times New Roman", serif; font-size: 16px !important; }
+    .font-menu .tool-menu-popover { display: grid; grid-template-columns: 1fr; }
+    .font-menu .tool-menu-popover button { min-width: 76px; text-align: left; }
+    .title-number-menu .tool-menu-popover { display: grid; grid-template-columns: 1fr; }
+    .title-number-menu .tool-menu-popover button { min-width: 98px; text-align: left; }
+    .title-theme-dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      margin-left: 4px;
+      border-radius: 50%;
+      background: var(--current-theme-color, var(--orange));
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, .08);
+      vertical-align: -1px;
+    }
+    .indent-menu .tool-menu-popover { display: grid; grid-template-columns: repeat(2, 38px); }
+    .indent-menu .tool-menu-popover button { min-width: 38px; padding-inline: 6px; }
+    .icon-button { width: 31px; min-height: 30px; padding: 0; border-radius: 7px; font-size: 16px; line-height: 1; }
+    .quote-button { padding-top: 3px; font-family: Georgia, serif; font-size: 23px; }
+    .italic-button { font-family: Georgia, "Times New Roman", serif; font-size: 18px; }
+    .indent-glyph {
+      position: relative;
+      display: grid;
+      justify-items: center;
+      gap: 2px;
+      width: 17px;
+      padding: 2px 3px;
+    }
+    .indent-glyph::before,
+    .indent-glyph::after {
+      content: '';
+      position: absolute;
+      top: 1px;
+      bottom: 1px;
+      width: 1.5px;
+      border-radius: 2px;
+      background: currentColor;
+    }
+    .indent-glyph::before { left: 0; }
+    .indent-glyph::after { right: 0; }
+    .indent-glyph > span { display: block; width: 10px; height: 1.5px; border-radius: 2px; background: currentColor; }
+    .brush-button { display: inline-grid; place-items: center; }
+    .brush-glyph {
+      position: relative;
+      display: block;
+      width: 15px;
+      height: 17px;
+      transform: rotate(-36deg);
+    }
+    .brush-glyph::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 6px;
+      width: 4px;
+      height: 10px;
+      border-radius: 4px;
+      background: currentColor;
+    }
+    .brush-glyph::after {
+      content: '';
+      position: absolute;
+      left: 3px;
+      bottom: 0;
+      width: 10px;
+      height: 7px;
+      border-radius: 2px 2px 5px 5px;
+      background: currentColor;
+      clip-path: polygon(18% 0, 82% 0, 100% 100%, 0 100%);
+    }
+    .history-button {
+      display: inline-grid;
+      place-items: center;
+      border: 1px solid #ebe6de;
+      background: var(--control);
+      color: var(--muted);
+      font: 400 19px/1 "Segoe UI Symbol", "Arial Unicode MS", sans-serif;
+      transition: background .15s ease, color .15s ease, transform .15s ease;
+    }
+    .history-button:hover { border-color: var(--line); background: var(--control-hover); color: var(--control-hover-ink); transform: translateY(-1px); }
+    .history-button:disabled { opacity: .48; border-color: var(--line); background: var(--control); cursor: default; transform: none; }
+    .align-button { display: inline-grid; place-items: center; }
+    .align-glyph { display: grid; gap: 2px; width: 15px; }
+    .align-glyph > span { display: block; height: 1.5px; border-radius: 2px; background: currentColor; }
+    .align-left-glyph > span:nth-child(2) { width: 10px; }
+    .align-center-glyph > span:nth-child(2) { width: 10px; justify-self: center; }
+    .align-right-glyph > span:nth-child(2) { width: 10px; justify-self: end; }
+
+    .toolbar-separator { width: 1px; height: 20px; margin: 3px 2px; background: var(--line); }
+
+    [data-tooltip] { position: relative; }
+    [data-tooltip]::before {
+      content: attr(data-tooltip);
+      position: absolute;
+      top: calc(100% + 7px);
+      left: 50%;
+      z-index: 90;
+      width: max-content;
+      max-width: 190px;
+      padding: 5px 7px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--control);
+      color: var(--ink);
+      box-shadow: 0 8px 22px rgba(37, 31, 25, .13);
+      font-size: 10px;
+      font-weight: 600;
+      line-height: 1.35;
+      letter-spacing: 0;
+      white-space: normal;
+      pointer-events: none;
+      opacity: 0;
+      visibility: hidden;
+      transform: translate(-50%, -2px);
+      transition: opacity .12s ease .28s, transform .12s ease .28s, visibility 0s linear .4s;
+    }
+    [data-tooltip]:hover::before,
+    [data-tooltip]:focus-visible::before {
+      opacity: 1;
+      visibility: visible;
+      transform: translate(-50%, 0);
+      transition-delay: .28s;
+    }
+    .header-actions [data-tooltip]::before { max-width: 150px; text-align: center; }
+    .header-actions [data-tooltip]:last-child::before {
+      right: 0;
+      left: auto;
+      transform: translate(0, -2px);
+    }
+    .header-actions [data-tooltip]:last-child:hover::before,
+    .header-actions [data-tooltip]:last-child:focus-visible::before { transform: translate(0, 0); }
+
+    .editor-wrap {
+      max-height: calc(100vh - 190px);
+      min-height: 680px;
+      overflow: auto;
+      background: radial-gradient(circle at top, var(--editor-wash-a) 0, var(--editor-wash-b) 68%);
+      padding: 24px;
+    }
+
+    .editor-resize-shell {
+      width: min(820px, 100%);
+      min-width: min(460px, 100%);
+      max-width: 100%;
+      margin: 0 auto;
+      position: relative;
+    }
+    .editor-resize-handle {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      z-index: 4;
+      width: 16px;
+      cursor: ew-resize;
+      touch-action: none;
+      outline: none;
+    }
+    .editor-resize-handle::after {
+      content: '';
+      position: absolute;
+      top: 45%;
+      width: 3px;
+      height: 44px;
+      border-radius: 3px;
+      background: rgba(112, 102, 91, .24);
+      transition: background .15s ease, transform .15s ease;
+    }
+    .editor-resize-handle:hover::after,
+    .editor-resize-handle:focus-visible::after { background: var(--orange); transform: scaleY(1.15); }
+    .editor-resize-handle.left { left: -8px; }
+    .editor-resize-handle.left::after { left: 5px; }
+    .editor-resize-handle.right { right: -8px; }
+    .editor-resize-handle.right::after { right: 5px; }
+
+    .editor-page {
+      width: 100%;
+      min-height: 620px;
+      padding: 58px 54px 72px;
+      overflow: auto;
+      outline: none;
+      background: var(--article-paper);
+      color: var(--article-ink);
+      border: 1px solid var(--article-line);
+      border-radius: 5px;
+      box-shadow: 0 16px 46px rgba(49, 40, 28, 0.09);
+      caret-color: var(--orange);
+    }
+
+    .editor-page:focus { box-shadow: 0 0 0 2px rgba(255, 104, 39, 0.2), 0 10px 32px rgba(49, 40, 28, 0.08); }
+    .editor-page::selection,
+    .editor-page *::selection { background: rgba(255, 168, 121, 0.3); }
+    .editor-page [data-format-warning] {
+      background-color: rgba(255, 181, 111, .12);
+      text-decoration-line: underline;
+      text-decoration-style: wavy;
+      text-decoration-color: #cc6946;
+      text-decoration-thickness: 1.5px;
+      text-underline-offset: 4px;
+      box-decoration-break: clone;
+      -webkit-box-decoration-break: clone;
+      animation: format-warning-pulse .75s ease-out 1;
+    }
+    @keyframes format-warning-pulse {
+      0% { background-color: rgba(255, 151, 75, .34); }
+      100% { background-color: rgba(255, 181, 111, .12); }
+    }
+
+    .side { display: grid; gap: 14px; }
+    .panel { padding: 17px; }
+    .panel h2 { margin: 0 0 12px; font-size: 16px; }
+
+    .check-panel { padding: 14px 15px; }
+    .check-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .check-panel .check-panel-head h2 { margin: 0; }
+    .check-list { display: grid; gap: 6px; margin-top: 9px; }
+
+    .check-row {
+      display: grid;
+      grid-template-columns: 7px minmax(0, 1fr);
+      gap: 7px;
+      align-items: start;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .swatch { width: 10px; height: 10px; margin-top: 4px; border-radius: 99px; background: var(--orange); }
+    .swatch.space { border: 1px solid #bcb5ab; background: linear-gradient(#fff 35%, #e7e1d8 35% 65%, #fff 65%); }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin: 0;
+      padding: 0;
+      border-radius: 0;
+      background: transparent;
+      color: var(--ok);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .status.warning { background: transparent; color: var(--warn); }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .check-row .result { grid-column: 2; color: var(--ok); font-size: 11px; font-weight: 650; }
+    .check-row.fail .result { color: var(--warn); }
+    .check-row.actionable {
+      margin: 0 -7px;
+      padding: 7px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background .15s ease, transform .15s ease;
+    }
+    .check-row.actionable:hover,
+    .check-row.actionable:focus-visible { background: var(--warning-bg); outline: none; transform: translateX(2px); }
+    .check-row.actionable.active { background: var(--warning-bg); box-shadow: inset 2px 0 0 var(--warn); }
+    .locate-hint { display: block; margin-top: 2px; color: var(--muted); font-size: 10px; font-weight: 600; }
+
+    .hint {
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .theme-presets { display: flex; flex-wrap: wrap; gap: 7px; }
+    .theme-chip { padding: 7px 10px; font-size: 12px; }
+    .theme-chip::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--theme-color, var(--orange)); }
+    .theme-save-row { display: grid; grid-template-columns: 1fr auto; gap: 7px; margin-top: 12px; }
+    .theme-name-input { min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 8px 9px; font: inherit; font-size: 13px; }
+    .custom-theme-list {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 7px;
+      margin-top: 9px;
+    }
+    .custom-theme-list:empty { display: none; }
+    .custom-theme-row {
+      position: relative;
+      flex: 0 0 auto;
+      width: max-content;
+      max-width: 100%;
+      border-radius: 9px;
+      box-shadow: 0 3px 10px color-mix(in srgb, var(--theme-color) 22%, transparent);
+    }
+    .saved-theme-apply {
+      width: auto;
+      min-width: 66px;
+      max-width: 100%;
+      min-height: 44px;
+      padding: 8px 28px 8px 11px;
+      overflow: hidden;
+      border-color: var(--theme-color);
+      border-radius: 9px;
+      background: var(--theme-color);
+      color: var(--theme-ink);
+      font-size: 12px;
+      line-height: 1.25;
+      text-align: left;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .saved-theme-apply:hover,
+    .saved-theme-apply:focus-visible {
+      border-color: var(--theme-color);
+      filter: brightness(.94);
+      outline: 2px solid color-mix(in srgb, var(--theme-color) 30%, transparent);
+      outline-offset: 2px;
+    }
+    .theme-overlay-action {
+      position: absolute;
+      right: 3px;
+      z-index: 2;
+      display: grid;
+      place-items: center;
+      width: 17px;
+      height: 17px;
+      min-width: 17px;
+      padding: 0;
+      opacity: 0;
+      border: 1px solid color-mix(in srgb, var(--theme-ink) 38%, transparent);
+      border-radius: 50%;
+      background: color-mix(in srgb, var(--theme-color) 72%, transparent);
+      color: var(--theme-ink);
+      font-size: 12px;
+      line-height: 1;
+      transform: scale(.8);
+      transition: opacity .14s ease, transform .14s ease, background .14s ease;
+    }
+    .custom-theme-row:hover .theme-overlay-action,
+    .custom-theme-row:focus-within .theme-overlay-action { opacity: 1; transform: scale(1); }
+    .theme-delete { top: 3px; font-size: 13px; }
+    .theme-edit { right: 3px; bottom: 3px; font-size: 10px; }
+    .theme-overlay-action:hover,
+    .theme-overlay-action:focus-visible {
+      border-color: var(--theme-ink);
+      background: var(--theme-ink);
+      color: var(--theme-color);
+      outline: none;
+    }
+    .theme-status { display: block; min-height: 17px; margin-top: 7px; color: var(--muted); font-size: 11px; }
+
+    @media (hover: none) {
+      .theme-overlay-action { opacity: 1; transform: scale(1); }
+    }
+
+    .html-output {
+      width: 100%;
+      height: 170px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      padding: 10px;
+      background: var(--code-bg);
+      color: #5c5650;
+      font: 11px/1.55 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    @media (min-width: 981px) {
+      .workspace { align-items: stretch; }
+      .editor-card {
+        display: flex;
+        flex-direction: column;
+        min-height: 680px;
+      }
+      .editor-wrap {
+        display: flex;
+        flex: 1 1 auto;
+        min-height: 0;
+        max-height: none;
+      }
+      .editor-resize-shell {
+        display: flex;
+        height: 100%;
+        min-height: 0;
+      }
+      .editor-page {
+        flex: 1 1 auto;
+        height: 100%;
+        min-height: 0;
+      }
+    }
+
+    @media (max-width: 1020px) {
+      .agent-intake { grid-template-columns: 250px minmax(0, 1fr); }
+      .learning-stack { grid-column: 1 / -1; }
+    }
+
+    @media (max-width: 980px) {
+      .quick-component { grid-template-columns: 1fr 1fr; }
+      .component-action { grid-column: 1 / -1; }
+      .workspace { grid-template-columns: 1fr; }
+      .editor-wrap { max-height: none; }
+    }
+
+    @media (max-width: 760px) {
+      body { overflow-x: hidden; }
+      .app-shell { padding: 10px 0 18px; }
+      .topbar { align-items: flex-start; flex-direction: column; gap: 10px; margin-bottom: 10px; padding: 0 12px; }
+      .eyebrow, .subline { display: none; }
+      .maker-meta { top: 1px; right: 12px; font-size: 9px; }
+      h1 { font-size: 21px; }
+      .wechat-assistant-logo { width: 26px; height: 26px; flex-basis: 26px; border-radius: 8px; }
+      .header-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; gap: 7px; }
+      .header-actions > * { width: 100%; min-width: 0; padding-inline: 6px; }
+      .header-actions #search-toggle,
+      .header-actions #validate,
+      .header-actions #format-all { display: none; }
+      .mobile-preview-link { display: none; }
+      .header-actions .full-version-link { display: inline-flex; }
+      .appearance-toggle { min-width: 0; padding-inline: 6px; }
+
+      .agent-intake {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-rows: repeat(2, 46px);
+        gap: 6px;
+        margin: 0 10px 8px;
+        padding: 6px;
+      }
+      .agent-prompt-card,
+      .agent-flow-card,
+      .intake-learning-card {
+        flex: 1 1 auto;
+        width: 100%;
+        height: 100%;
+        min-width: 0;
+        min-height: 0;
+        max-height: none;
+        padding: 0;
+      }
+      .agent-step-head { display: none; }
+      .agent-prompt-card,
+      .agent-flow-card,
+      .intake-learning-card { display: block; }
+      .agent-prompt-stack { grid-column: 1; grid-row: 1; }
+      .learning-stack { grid-column: 1; grid-row: 2; }
+      .agent-flow-stack { grid-column: 2; grid-row: 1 / span 2; }
+      .compact-input-wrap,
+      .agent-input-wrap,
+      .style-learning-paste-row {
+        --compact-action-width: 50px;
+        width: 100%;
+        min-height: 0;
+        height: 100%;
+      }
+      .compact-input-field,
+      .agent-input,
+      .style-sample,
+      .agent-prompt-editor { min-height: 100%; height: 100%; max-height: 100%; }
+      .agent-prompt-editor { font-size: 11px; }
+      .compact-input-wrap > button,
+      .agent-input-wrap > button,
+      .style-learning-paste-row > button {
+        right: 16px;
+        height: 28px;
+        padding-inline: 7px;
+        border-radius: 6px;
+      }
+
+      .workspace { display: block; }
+      .editor-card { border-right: 0; border-left: 0; border-radius: 0; }
+      .mobile-action-bar {
+        position: sticky;
+        top: 0;
+        z-index: 16;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 7px;
+        padding: 8px 10px 7px;
+        border-bottom: 1px solid var(--line);
+        background: var(--toolbar-bg);
+        backdrop-filter: blur(12px);
+      }
+      .mobile-action-bar button { min-width: 0; padding: 8px 5px; font-size: 12px; }
+      .mobile-check-state {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        min-height: 30px;
+        margin-left: auto;
+        color: var(--ok);
+        font-size: 9px;
+        font-weight: 700;
+        text-align: right;
+        white-space: nowrap;
+      }
+      .mobile-check-state.warning { color: var(--warn); }
+      .toolbar {
+        top: 52px;
+        z-index: 15;
+        flex-wrap: wrap;
+        overflow: visible;
+        row-gap: 5px;
+        padding: 7px 10px;
+      }
+      .toolbar > * { flex: 0 0 auto; }
+      .toolbar-separator { display: none; }
+      .tool-menu-popover {
+        position: absolute;
+        top: calc(100% + 6px);
+        bottom: auto;
+        left: 0;
+        max-width: calc(100vw - 20px);
+        transform: none;
+      }
+      .document-search { display: none !important; }
+      .mobile-publish-preview { display: none !important; }
+
+      [data-tooltip]::before { display: none; }
+      .editor-wrap { display: block; min-height: 70vh; padding: 0; background: var(--article-paper); }
+      .editor-resize-shell { display: block; width: 100% !important; min-width: 0; max-width: none; height: auto; }
+      .editor-resize-handle { display: none; }
+      .editor-page {
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+        height: auto;
+        min-height: 70vh;
+        padding: 32px 20px 58px;
+        resize: none;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+      }
+      .editor-page [data-wechat-title-part="box"] {
+        display: inline !important;
+        width: auto !important;
+        padding: 2px 5px !important;
+        box-decoration-break: clone;
+        -webkit-box-decoration-break: clone;
+      }
+      .editor-page:focus { box-shadow: inset 0 2px 0 rgba(255, 104, 39, 0.22); }
+
+      .side { gap: 10px; margin: 10px; }
+      .panel { padding: 14px; border-radius: 12px; }
+      .html-output { height: 120px; }
+      .quick-component { grid-template-columns: 1fr; gap: 12px; margin: 10px; padding: 14px; }
+      .component-action { grid-column: auto; min-width: 0; }
+      .annotation-input { height: 96px; font-size: 16px; }
+    }
+
+    html[data-page-view="mobile"] {
+      min-height: 100%;
+      background: var(--canvas);
+    }
+
+    html[data-page-view="mobile"] body {
+      width: min(100%, 480px);
+      min-height: 100vh;
+      margin: 0 auto;
+      overflow-x: hidden;
+    }
+  </style>
+  <script>
+    // The mobile route uses the same document and editor logic, but activates the
+    // responsive rules even when it is opened from a wide desktop browser.
+    if (document.documentElement.dataset.pageView === 'mobile') {
+      const forcedMobileCss = [];
+      for (const sheet of document.styleSheets) {
+        let rules;
+        try { rules = sheet.cssRules; } catch (_) { continue; }
+        for (const rule of rules) {
+          if (!(rule instanceof CSSMediaRule)) continue;
+          if (!/max-width\s*:\s*(?:1020|980|760)px/i.test(rule.conditionText)) continue;
+          for (const nestedRule of rule.cssRules) forcedMobileCss.push(nestedRule.cssText);
+        }
+      }
+      const mobileStyle = document.createElement('style');
+      mobileStyle.dataset.forcedMobileRules = '';
+      mobileStyle.textContent = forcedMobileCss.join('\n');
+      document.head.appendChild(mobileStyle);
+    }
+  </script>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <p class="maker-meta">制作人：松壑 <span>v-1.0.3</span></p>
+      <div>
+        <p class="eyebrow">Formatting Lab</p>
+        <div class="brand-title-row">
+          <span class="wechat-assistant-logo" role="img" aria-label="微信公众号助手"></span>
+          <h1>公众号操作台</h1>
+        </div>
+        <p class="subline">识别结构，调整版式，复制到微信。</p>
+      </div>
+      <div class="header-actions">
+        <button id="mobile-preview-toggle" class="header-icon-control mobile-preview-link" type="button" aria-label="悬浮预览发布效果，点击进入移动版" aria-expanded="false" aria-controls="mobile-publish-preview" data-tooltip="悬浮预览，点击进入移动版"><span class="header-symbol phone-header-icon" aria-hidden="true"></span></button>
+        <button id="appearance-toggle" class="appearance-toggle header-icon-control" type="button" aria-label="外观：跟随系统，点击切换" data-tooltip="切换白天 / 黑夜 / 跟随系统"><span id="appearance-icon" class="appearance-icon" data-mode="system" aria-hidden="true"></span><span id="appearance-label" class="visually-hidden">系统</span></button>
+        <button id="reset-sample" class="header-icon-control" type="button" aria-label="还原最早粘贴的版本" data-tooltip="还原到最早粘贴版本"><span class="header-symbol restore-header-icon" aria-hidden="true"></span></button>
+        <a class="header-action-link header-icon-control full-version-link" href="index.html?view=desktop" target="_top" aria-label="PC 端完整版" title="PC 端完整版"><span class="header-symbol pc-header-icon" aria-hidden="true"></span></a>
+        <button id="search-toggle" class="header-icon-control" type="button" aria-label="搜索全文" aria-expanded="false" aria-controls="document-search" data-tooltip="搜索全文"><span class="header-symbol search-header-icon" aria-hidden="true"></span></button>
+        <button id="validate" class="header-icon-control" type="button" aria-label="格式审核" data-tooltip="检查并定位格式偏差"><span class="header-symbol audit-header-icon" aria-hidden="true"></span></button>
+        <button id="format-all" class="primary header-icon-control" type="button" aria-label="自动排版并检查" data-tooltip="自动排版并检查"><span class="header-symbol format-header-icon" aria-hidden="true"></span></button>
+      </div>
+      <div id="document-search" class="document-search" role="search" aria-label="全文搜索" hidden>
+        <input id="document-search-input" type="search" autocomplete="off" placeholder="搜索全文" aria-label="搜索全文">
+        <span id="document-search-count" class="document-search-count" aria-live="polite">0 / 0</span>
+        <button id="search-previous" type="button" aria-label="上一个搜索结果" title="上一个">↑</button>
+        <button id="search-next" type="button" aria-label="下一个搜索结果" title="下一个">↓</button>
+        <button id="search-close" type="button" aria-label="关闭搜索" title="关闭">×</button>
+      </div>
+      <section id="mobile-publish-preview" class="mobile-publish-preview" aria-label="发布后的手机效果预览" hidden>
+        <div class="mobile-publish-preview-head">
+          <strong>发布效果 <span>微信公众号正文</span></strong>
+          <button id="mobile-preview-close" type="button" aria-label="关闭手机预览" title="关闭">×</button>
+        </div>
+        <div class="publish-preview-phone">
+          <div id="publish-preview-screen" class="publish-preview-screen"></div>
+        </div>
+      </section>
+    </header>
+
+    <section class="agent-intake" aria-label="外部 Agent 工作流">
+      <div class="agent-module-stack agent-prompt-stack">
+        <div class="agent-prompt-card">
+          <div class="agent-step-head"><span class="agent-step">1</span><strong>复制给 Agent</strong></div>
+          <div class="compact-input-wrap agent-prompt-wrap">
+            <textarea id="agent-prompt-editor" class="agent-prompt-editor compact-input-field" aria-label="Agent 提示词预览与编辑"></textarea>
+            <button id="copy-agent-prompt" class="primary agent-copy-button" type="button">复制</button>
+          </div>
+        </div>
+      </div>
+      <div class="agent-module-stack agent-flow-stack">
+        <div class="agent-flow-card">
+          <div class="agent-step-head"><span class="agent-step">2</span><strong>粘贴返回内容</strong></div>
+          <p class="agent-help">Agent 处理完成后，把它返回的内容粘贴到下方，再填入编辑器。</p>
+          <div class="agent-input-wrap compact-input-wrap">
+            <textarea id="agent-input" class="agent-input compact-input-field" aria-label="第 2 步：粘贴 Agent 返回内容" placeholder="粘贴 Agent 返回的 JSON，也兼容普通长文……"></textarea>
+            <button id="agent-import" class="primary" type="button">填入</button>
+          </div>
+        </div>
+        <small id="agent-status" class="agent-module-status" aria-live="polite"></small>
+      </div>
+      <div class="agent-module-stack learning-stack">
+        <section class="intake-learning-card style-learning-panel">
+          <div class="agent-step-head"><strong>学习新格式</strong></div>
+          <div class="style-learning-paste-row compact-input-wrap">
+            <div id="style-sample" class="style-sample compact-input-field" contenteditable="true" aria-label="公众号链接或富文本样稿输入区" data-placeholder="粘贴公众号链接或带格式样稿……"></div>
+            <button id="learn-style" class="primary" type="button">应用</button>
+          </div>
+        </section>
+        <small id="learn-style-status" class="style-learning-status agent-module-status" aria-live="polite"></small>
+      </div>
+    </section>
+
+    <section class="workspace">
+      <article class="editor-card">
+        <div class="mobile-action-bar" aria-label="移动端快捷操作">
+          <button type="button" data-mobile-action="format">自动排版</button>
+          <button type="button" data-mobile-action="validate">检查</button>
+          <button class="primary" type="button" data-mobile-action="copy">复制富文本</button>
+        </div>
+        <nav class="toolbar" aria-label="富文本排版工具栏">
+          <details class="tool-menu size-tool" id="body-size-menu">
+            <summary aria-label="正文字号" data-tooltip="设置框选内容的正文字号">文<span id="current-body-size" class="visually-hidden">16</span></summary>
+            <div class="tool-menu-popover">
+              <button type="button" data-body-size="14">14</button>
+              <button type="button" data-body-size="15">15</button>
+              <button type="button" data-body-size="16">16</button>
+            </div>
+          </details>
+          <details class="tool-menu size-tool" id="title-size-menu">
+            <summary aria-label="标题字号" data-tooltip="设置框选内容为章节标题">标<span id="current-title-size" class="visually-hidden">32</span></summary>
+            <div class="tool-menu-popover">
+              <button type="button" data-title-size="24">24</button>
+              <button type="button" data-title-size="32">32</button>
+            </div>
+          </details>
+          <details class="tool-menu title-number-menu" id="title-number-menu">
+            <summary aria-label="章节标题序号格式" data-tooltip="切换章节标题序号"><span id="current-title-number-label">序</span></summary>
+            <div class="tool-menu-popover">
+              <button type="button" data-title-number="arabic">1. 2. 3.</button>
+              <button type="button" data-title-number="chinese">一、二、三</button>
+              <button type="button" data-title-number="chinese-line">一 ↵ 标题</button>
+              <button type="button" data-title-number="chinese-box" aria-label="中文序号换行，主题色标题框">一 ↵ <span class="title-theme-dot" aria-hidden="true"></span></button>
+              <button type="button" data-title-number="none">无序号</button>
+            </div>
+          </details>
+          <span class="toolbar-separator" aria-hidden="true"></span>
+          <details class="tool-menu palette-menu" id="color-palette-menu">
+            <summary class="current-color-tool" aria-label="主题色" data-tooltip="统一标题与加粗文字的主题色"><span id="current-color-dot"></span></summary>
+            <div class="tool-menu-popover">
+              <button class="color-swatch-button" style="--swatch-color:#021eaa" type="button" data-theme-color="#021eaa" aria-label="屏外蓝"></button>
+              <button class="color-swatch-button" style="--swatch-color:#163a5f" type="button" data-theme-color="#163a5f" aria-label="深蓝"></button>
+              <button class="color-swatch-button" style="--swatch-color:#333333" type="button" data-theme-color="#333333" aria-label="墨黑"></button>
+              <button class="color-swatch-button" style="--swatch-color:#c83c3c" type="button" data-theme-color="#c83c3c" aria-label="绛红"></button>
+              <button class="color-swatch-button" style="--swatch-color:#b78628" type="button" data-theme-color="#b78628" aria-label="金棕"></button>
+              <button class="color-swatch-button" style="--swatch-color:#2e6b4f" type="button" data-theme-color="#2e6b4f" aria-label="墨绿"></button>
+              <button class="color-swatch-button" style="--swatch-color:#28757a" type="button" data-theme-color="#28757a" aria-label="青黛"></button>
+              <button class="color-swatch-button" style="--swatch-color:#6c4b8c" type="button" data-theme-color="#6c4b8c" aria-label="黛紫"></button>
+              <button class="color-swatch-button" style="--swatch-color:#d4478e" type="button" data-theme-color="#d4478e" aria-label="玫红"></button>
+              <button class="color-swatch-button" style="--swatch-color:#ff6827" type="button" data-theme-color="#ff6827" aria-label="橘色"></button>
+              <button class="color-swatch-button" style="--swatch-color:#168da1" type="button" data-theme-color="#168da1" aria-label="湖蓝"></button>
+              <button class="color-swatch-button" style="--swatch-color:#718428" type="button" data-theme-color="#718428" aria-label="橄榄绿"></button>
+              <button class="color-swatch-button" style="--swatch-color:#8a4f2d" type="button" data-theme-color="#8a4f2d" aria-label="赭棕"></button>
+              <button class="color-swatch-button" style="--swatch-color:#6b7280" type="button" data-theme-color="#6b7280" aria-label="石板灰"></button>
+            </div>
+          </details>
+          <span class="toolbar-separator" aria-hidden="true"></span>
+          <details class="tool-menu font-menu" id="font-family-menu">
+            <summary class="font-tool" aria-label="字体" data-tooltip="更改框选内容字体">T</summary>
+            <div class="tool-menu-popover">
+              <button type="button" data-font-key="system">默认</button>
+              <button type="button" data-font-key="heiti">黑体</button>
+              <button type="button" data-font-key="songti">宋体</button>
+              <button type="button" data-font-key="kaiti">楷体</button>
+            </div>
+          </details>
+          <span class="toolbar-separator" aria-hidden="true"></span>
+          <button class="icon-button brush-button" type="button" data-command="clear" aria-label="默认格式刷" data-tooltip="清除格式并恢复为正文"><span class="brush-glyph" aria-hidden="true"></span></button>
+          <button class="icon-button quote-button" type="button" data-command="quote" aria-label="引用" data-tooltip="添加或取消引用格式">“</button>
+          <button class="icon-button" type="button" data-command="bold" aria-label="主题色加粗" data-tooltip="添加或取消主题色粗体"><strong>B</strong></button>
+          <button class="icon-button italic-button" type="button" data-command="italic" aria-label="斜体" data-tooltip="添加或取消斜体"><em>I</em></button>
+          <details class="tool-menu indent-menu" id="paragraph-indent-menu">
+            <summary aria-label="两端缩进" data-tooltip="设置段落两端缩进"><span class="indent-glyph" aria-hidden="true"><span></span><span></span><span></span></span><span id="current-indent" class="visually-hidden">8</span></summary>
+            <div class="tool-menu-popover">
+              <button type="button" data-paragraph-indent="8">8</button>
+              <button type="button" data-paragraph-indent="16">16</button>
+            </div>
+          </details>
+          <button class="icon-button align-button" type="button" data-command="align-left" aria-label="左对齐" data-tooltip="左对齐"><span class="align-glyph align-left-glyph" aria-hidden="true"><span></span><span></span><span></span></span></button>
+          <button class="icon-button align-button" type="button" data-command="align-center" aria-label="居中" data-tooltip="居中"><span class="align-glyph align-center-glyph" aria-hidden="true"><span></span><span></span><span></span></span></button>
+          <button class="icon-button align-button" type="button" data-command="align-right" aria-label="右对齐" data-tooltip="右对齐"><span class="align-glyph align-right-glyph" aria-hidden="true"><span></span><span></span><span></span></span></button>
+          <button class="icon-button history-button" type="button" data-command="undo" aria-label="撤销" data-tooltip="撤销一步">↶</button>
+          <button class="icon-button history-button" type="button" data-command="redo" aria-label="重做" data-tooltip="重做一步">↷</button>
+          <span id="mobile-check-state" class="mobile-check-state" aria-live="polite">实时检查已开启</span>
+        </nav>
+
+        <div class="editor-wrap">
+          <div id="editor-resize-shell" class="editor-resize-shell">
+            <div class="editor-resize-handle left" data-resize-edge="left" role="separator" aria-orientation="vertical" aria-label="拖动调整编辑区宽度" tabindex="0"></div>
+            <section id="editor" class="editor-page" contenteditable="true" spellcheck="true" aria-label="微信公众号文章编辑区"></section>
+            <div class="editor-resize-handle right" data-resize-edge="right" role="separator" aria-orientation="vertical" aria-label="拖动调整编辑区宽度" tabindex="0"></div>
+          </div>
+        </div>
+      </article>
+
+      <aside class="side">
+        <section class="panel">
+          <h2>主题</h2>
+          <div id="theme-presets" class="theme-presets"></div>
+          <div id="custom-theme-list" class="custom-theme-list" aria-label="已保存主题"></div>
+          <div class="theme-save-row">
+            <input id="theme-name" class="theme-name-input" maxlength="16" placeholder="自建主题名称" aria-label="自建主题名称">
+            <button id="save-theme" type="button">保存当前</button>
+          </div>
+          <small id="theme-status" class="theme-status">主题只存当前设备，不上传云端。</small>
+        </section>
+
+        <section class="panel check-panel">
+          <div class="check-panel-head">
+            <h2>格式检查</h2>
+            <div id="status" class="status"><span class="status-dot"></span><span>等待检查</span></div>
+          </div>
+          <div id="checks" class="check-list"></div>
+        </section>
+
+        <section class="panel">
+          <h2>微信兼容 HTML</h2>
+          <textarea id="html-output" class="html-output" readonly aria-label="微信兼容 HTML 输出"></textarea>
+          <p class="hint">用于核对内联样式；发布时复制下方富文本。</p>
+          <button id="copy-rich" class="primary" type="button" style="width:100%;margin-top:12px;">复制富文本样稿</button>
+        </section>
+      </aside>
+    </section>
+
+    <section class="quick-component" aria-labelledby="annotation-box-title">
+      <div>
+        <p class="eyebrow">Quick component</p>
+        <h2 id="annotation-box-title">空白滚动批注框</h2>
+        <p>清除原格式，生成 12px、约 5 行可视的滚动批注框。</p>
+      </div>
+      <textarea id="annotation-input" class="annotation-input" aria-label="批注纯文本输入区" placeholder="把批注粘贴到这里，会自动清除原格式；留空则复制空白框。"></textarea>
+      <div class="component-action">
+        <button id="copy-annotation-box" class="primary" type="button">复制滚动框</button>
+        <small id="annotation-copy-status" aria-live="polite"></small>
+      </div>
+    </section>
+  </main>
+
+  <template id="sample-template">
+    <p>作者：林川</p>
+    <p>当城市里的设备越来越聪明，真正稀缺的并不是传感器、算法或数据，而是把短期效率与长期生活连接起来的判断。技术可以让系统跑得更快，却不能自动回答人们希望抵达哪里。</p>
+    <p>这篇文章从交通、社区和公共服务三个场景出发，讨论一座城市如何在自动化浪潮中保留必要的耐心、冗余与人工选择。</p>
+    <h2>1. 快系统之外，还需要慢变量</h2>
+    <p>早高峰的信号灯可以根据车流实时变化，公交线路也能依据历史数据调整班次。对管理者而言，这些可量化的改进最容易被看见，因为每一分钟都可以被记录，每一次提速都可以写进报表。</p>
+    <p><strong>效率指标回答的是系统跑得多快，却不一定回答它是否把人送到了更好的生活里。</strong></p>
+    <p>真正影响城市韧性的，往往是维护周期、邻里信任、步行习惯和一线人员的经验。这些变量变化缓慢，很难在一张实时大屏上闪烁，却会在暴雨、停电或人口结构变化时决定系统能否继续工作。</p>
+    <p>第二章 当设备开始替人做决定</p>
+    <p>自动化最初通常以辅助工具出现：提醒工作人员、归纳信息、提供几个可选方案。随着模型能力提高，它会逐渐进入资源分配、风险识别和服务排序等环节，原本由人承担的判断被拆成一连串看似中性的参数。</p>
+    <p>参数并非天然客观。训练数据记录的是过去发生过什么，而不是未来应该发生什么；如果历史中存在被忽略的人群，自动化只会更稳定地重复这种忽略。</p>
+    <p data-wechat-role="quote" data-quote-previous-role="body"><strong data-wechat-role="emphasis"><em>“一个真正可靠的系统，不是从不出错，而是在出错时仍然允许人看见、理解并纠正它。”</em></strong></p>
+    <p>这句话来自一位长期参与公共系统改造的工程师。它提醒我们，解释入口、人工复核和申诉通道并不是自动化的附属成本，而是系统获得社会信任的必要结构。</p>
+    <p>三、把零散信息变成可复用的判断</p>
+    <p>很多机构拥有大量报告，却仍然在相似问题上反复从头讨论。原因不在信息不足，而在经验没有被整理成可检索、可追溯、可更新的判断链条。</p>
+    <p>一套有效的知识机制至少要保留三个层次：事实从哪里来，当时为什么得出这个结论，以及后来发生了什么变化。**只有结论而没有依据，知识库很快就会变成另一种形式的意见堆积。**</p>
+    <p>当新情况出现时，团队需要修改的是结论所依赖的条件，而不是把整篇旧文推倒重来。这样，经验才会随着时间积累，而不是随着人员流动不断清零。</p>
+    <p>第四部分 给系统留下人工出口</p>
+    <p>人工出口不是简单设置一个“联系客服”按钮。它意味着用户能够知道机器做出了什么判断、依据是什么、由谁负责复核，以及在多长时间内可以得到回应。</p>
+    <p><b>越是影响范围广、纠错成本高的决定，越不应该只留下一个不可解释的自动结果。</b></p>
+    <p>好的自动化会把重复劳动交给机器，把价值冲突和例外情况交还给人。它不追求消灭所有不确定性，而是让有限的人力集中在真正需要负责的地方。</p>
+    <p>城市如此，组织亦然。我们最终需要的并不是一个永远替人作答的系统，而是一套能帮助人更清楚地看见问题、保留选择并承担后果的工具。</p>
+  </template>
+
+  <script>
+    (() => {
+      const ORANGE = '#ff6827';
+      const DEFAULT_THEME_COLOR = '#021eaa';
+      const BODY_COLOR = '#333333';
+      const editor = document.getElementById('editor');
+      const sampleTemplate = document.getElementById('sample-template');
+      const htmlOutput = document.getElementById('html-output');
+      const checks = document.getElementById('checks');
+      const status = document.getElementById('status');
+      const copyButton = document.getElementById('copy-rich');
+      const annotationCopyButton = document.getElementById('copy-annotation-box');
+      const annotationCopyStatus = document.getElementById('annotation-copy-status');
+      const annotationInput = document.getElementById('annotation-input');
+      const agentInput = document.getElementById('agent-input');
+      const agentImportButton = document.getElementById('agent-import');
+      const agentPromptButton = document.getElementById('copy-agent-prompt');
+      const agentPromptEditor = document.getElementById('agent-prompt-editor');
+      const agentStatus = document.getElementById('agent-status');
+      const styleSample = document.getElementById('style-sample');
+      const learnStyleButton = document.getElementById('learn-style');
+      const learnStyleStatus = document.getElementById('learn-style-status');
+      const currentColorDot = document.getElementById('current-color-dot');
+      const currentBodySizeLabel = document.getElementById('current-body-size');
+      const currentTitleSizeLabel = document.getElementById('current-title-size');
+      const currentTitleNumberLabel = document.getElementById('current-title-number-label');
+      const currentIndentLabel = document.getElementById('current-indent');
+      const mobileCheckState = document.getElementById('mobile-check-state');
+      const editorWrap = document.querySelector('.editor-wrap');
+      const editorResizeShell = document.getElementById('editor-resize-shell');
+      const themePresets = document.getElementById('theme-presets');
+      const themeNameInput = document.getElementById('theme-name');
+      const saveThemeButton = document.getElementById('save-theme');
+      const customThemeList = document.getElementById('custom-theme-list');
+      const themeStatus = document.getElementById('theme-status');
+      const appearanceToggle = document.getElementById('appearance-toggle');
+      const appearanceIcon = document.getElementById('appearance-icon');
+      const appearanceLabel = document.getElementById('appearance-label');
+      const searchToggle = document.getElementById('search-toggle');
+      const documentSearch = document.getElementById('document-search');
+      const documentSearchInput = document.getElementById('document-search-input');
+      const documentSearchCount = document.getElementById('document-search-count');
+      const searchPreviousButton = document.getElementById('search-previous');
+      const searchNextButton = document.getElementById('search-next');
+      const searchCloseButton = document.getElementById('search-close');
+      const mobilePreviewToggle = document.getElementById('mobile-preview-toggle');
+      const mobilePublishPreview = document.getElementById('mobile-publish-preview');
+      const publishPreviewScreen = document.getElementById('publish-preview-screen');
+      const mobilePreviewCloseButton = document.getElementById('mobile-preview-close');
+      const undoButton = document.querySelector('[data-command="undo"]');
+      const redoButton = document.querySelector('[data-command="redo"]');
+      let savedEditorRange = null;
+      let lastToolbarTarget = null;
+      let lastToolbarBlocks = [];
+
+      const FONT_STACKS = {
+        system: "-apple-system,BlinkMacSystemFont,'Helvetica Neue','PingFang SC','Microsoft YaHei',sans-serif",
+        heiti: "'PingFang SC','Microsoft YaHei','Noto Sans CJK SC',sans-serif",
+        songti: "'Songti SC','STSong','SimSun','Noto Serif CJK SC',serif",
+        kaiti: "'Kaiti SC','STKaiti','KaiTi',serif"
+      };
+      let selectedFontStack = FONT_STACKS.system;
+      let selectedFontKey = 'system';
+      let currentBodySize = 16;
+      let currentTitleSize = 32;
+      let currentTitleColor = DEFAULT_THEME_COLOR;
+      let currentAccentColor = DEFAULT_THEME_COLOR;
+      let currentTitleNumberStyle = 'chinese-box';
+      let currentIndent = 8;
+      let editingThemeId = null;
+      let validationTimer = null;
+      const HISTORY_LIMIT = 10;
+      let undoStack = [];
+      let redoStack = [];
+      let lastHistoryHtml = '';
+      let historyTimer = null;
+      let originalArticleHtml = '';
+      let hasUserOriginal = false;
+      let documentSearchRanges = [];
+      let documentSearchIndex = -1;
+      let documentSearchUsesSelection = false;
+      let mobilePreviewCloseTimer = null;
+
+      const THEME_STORAGE_KEY = 'wechat-workbench-custom-themes-v1';
+      const APPEARANCE_STORAGE_KEY = 'wechat-workbench-appearance-v1';
+      const EDITOR_WIDTH_STORAGE_KEY = 'wechat-workbench-editor-width-v1';
+      const FONT_LABELS = { system: '默认', heiti: '黑体', songti: '宋体', kaiti: '楷体' };
+      const TITLE_NUMBER_LABELS = { arabic: '序', chinese: '序', 'chinese-line': '序', 'chinese-box': '序', none: '序' };
+      const APPEARANCE_MODES = [
+        { id: 'system', label: '系统', icon: '◐' },
+        { id: 'light', label: '白天', icon: '☀' },
+        { id: 'dark', label: '黑夜', icon: '☾' }
+      ];
+      const BUILTIN_THEMES = [
+        { id: 'navy', name: '阅读蓝', bodySize: 16, titleSize: 24, indent: 8, fontKey: 'heiti', themeColor: '#163a5f' },
+        { id: 'editorial', name: '杂志紫', bodySize: 15, titleSize: 24, indent: 8, fontKey: 'songti', themeColor: '#6c4b8c' },
+        { id: 'classic', name: '经典橘', bodySize: 16, titleSize: 32, indent: 8, fontKey: 'system', themeColor: '#ff6827' }
+      ];
+
+      const AGENT_PROMPT = `你是公众号文章的版序识别与语义排版助手。\n\n原文会和本提示词一起发送给你。\n\n任务：理解全文，识别作者、真正存在的摘要或导语、章节标题、章节正文和少量真正重要的句子；不虚构信息、不改变事实，只修正明显的断句或粘贴错误。把结果填入下方 JSON，并将填好的 JSON 直接返回给用户。\n\n必须使用英文半角 JSON 结构标点（" : , { } [ ]），不得用中文弯引号包围键名或字符串。\n\n只返回可被 JSON.parse 解析的 JSON 对象，不要附加解释、Markdown、代码围栏或 HTML：\n{\n  "author": "作者姓名；没有则为空字符串",\n  "intro": ["仅填写原文明示或内容明确属于摘要、导语、编者按的自然段；没有则为空数组"],\n  "sections": [\n    {\n      "title": "一、章节标题",\n      "paragraphs": [\n        {\n          "text": "完整的章节正文自然段",\n          "highlights": ["正文中原样出现的完整核心判断句"]\n        }\n      ]\n    }\n  ]\n}\n\n结构规则：\n1. author 只写作者姓名。作者、来源、日期、文章标题和普通开场正文都不得放入 intro。\n2. intro 采用高门槛判断：只有原文明示为“摘要”“导语”“编者按”，或内容明确承担全文概括功能时才填写。仅仅位于第一章之前，不能作为 intro 的判断依据；拿不准时返回空数组，并把相应文字保留为正文。\n3. 不要把摘要、导语、作者信息、来源或普通正文判断成引用。引用只适用于原文中有明确发言者或来源、确实需要读者重视的他人原话；本 JSON 不自动套用引用格式，原话仍按正文保留，是否设为引用由用户手动决定。\n4. paragraphs 一项对应一个完整自然段。没有显式标题时，可根据语义生成克制、准确的小标题。\n5. 每个章节所有 paragraphs 中的 highlights 合计最多 3 句，通常选择 1—2 句；宁缺毋滥。highlights 必须在对应正文中逐字出现，操作台会统一加粗并使用当前主题色呈现。`;
+      const AGENT_PROMPT_SENTENCE_RULE = `重点句补充规则：每项 highlight 必须是一个完整句子，从句首保留到句号、问号或叹号并包含句末标点；不得因为逗号、分号或冒号截成半句。每章最多 3 句。优先选择能概括章节核心判断、结论或关键转折的句子；尽量不要选择章节标题正上方的上一段末句或标题正下方第一句，除非该句确实是全章不可替代的最佳判断。`;
+      let agentPromptText = `${AGENT_PROMPT}\n\n${AGENT_PROMPT_SENTENCE_RULE}`;
+      let lastValidAgentPrompt = agentPromptText;
+      agentPromptEditor.value = agentPromptText;
+
+      const titlePattern = /^(?:第[一二三四五六七八九十百零\d]+(?:章|节|部分|篇)|[一二三四五六七八九十百零\d]+[\.．、])\s*\S+/;
+      const authorPattern = /^(?:作者|撰文|文|来源|by)\s*[：:／/]\s*\S+/i;
+
+      function applyAppearance(modeId) {
+        const mode = APPEARANCE_MODES.find((item) => item.id === modeId) || APPEARANCE_MODES[0];
+        document.documentElement.dataset.colorMode = mode.id;
+        appearanceIcon.dataset.mode = mode.id;
+        appearanceIcon.textContent = '';
+        appearanceLabel.textContent = mode.label;
+        appearanceToggle.setAttribute('aria-label', `外观：${mode.label}，点击切换`);
+        try { localStorage.setItem(APPEARANCE_STORAGE_KEY, mode.id); } catch {}
+      }
+
+      function initialAppearance() {
+        try {
+          const saved = localStorage.getItem(APPEARANCE_STORAGE_KEY);
+          return APPEARANCE_MODES.some((item) => item.id === saved) ? saved : 'system';
+        } catch {
+          return 'system';
+        }
+      }
+
+      function cycleAppearance() {
+        const current = document.documentElement.dataset.colorMode || 'system';
+        const index = APPEARANCE_MODES.findIndex((item) => item.id === current);
+        applyAppearance(APPEARANCE_MODES[(index + 1) % APPEARANCE_MODES.length].id);
+      }
+
+      function clearDocumentSearchHighlights() {
+        if (window.CSS?.highlights) {
+          CSS.highlights.delete('document-search-all');
+          CSS.highlights.delete('document-search-current');
+        }
+        if (documentSearchUsesSelection) {
+          const selection = window.getSelection();
+          if (selection?.rangeCount && editor.contains(selection.anchorNode)) selection.removeAllRanges();
+          documentSearchUsesSelection = false;
+        }
+      }
+
+      function buildDocumentSearchIndex() {
+        const entries = [];
+        let text = '';
+        const roots = [...editor.childNodes].filter((node) => node.nodeType === Node.TEXT_NODE || node.nodeType === Node.ELEMENT_NODE);
+
+        roots.forEach((root, rootIndex) => {
+          if (root.nodeType === Node.TEXT_NODE) {
+            const value = root.nodeValue || '';
+            if (value) {
+              entries.push({ node: root, start: text.length, end: text.length + value.length });
+              text += value;
+            }
+          } else {
+            const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+            while (walker.nextNode()) {
+              const node = walker.currentNode;
+              const value = node.nodeValue || '';
+              if (!value) continue;
+              entries.push({ node, start: text.length, end: text.length + value.length });
+              text += value;
+            }
+          }
+          if (rootIndex < roots.length - 1) text += '\n';
+        });
+
+        return { text, entries };
+      }
+
+      function rangeForSearchOffsets(entries, start, end) {
+        const startEntry = entries.find((entry) => start >= entry.start && start < entry.end);
+        const endEntry = entries.find((entry) => end > entry.start && end <= entry.end);
+        if (!startEntry || !endEntry) return null;
+        const range = document.createRange();
+        range.setStart(startEntry.node, start - startEntry.start);
+        range.setEnd(endEntry.node, end - endEntry.start);
+        return range;
+      }
+
+      function paintDocumentSearchHighlights() {
+        clearDocumentSearchHighlights();
+        const currentRange = documentSearchRanges[documentSearchIndex];
+        if (!currentRange) return;
+        if (window.CSS?.highlights && typeof window.Highlight === 'function') {
+          CSS.highlights.set('document-search-all', new Highlight(...documentSearchRanges));
+          CSS.highlights.set('document-search-current', new Highlight(currentRange));
+        } else {
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(currentRange);
+          documentSearchUsesSelection = true;
+        }
+      }
+
+      function focusDocumentSearchMatch() {
+        paintDocumentSearchHighlights();
+        const range = documentSearchRanges[documentSearchIndex];
+        if (!range) return;
+        const target = range.startContainer.nodeType === Node.TEXT_NODE
+          ? range.startContainer.parentElement
+          : range.startContainer;
+        target?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+      }
+
+      function updateDocumentSearch(resetIndex = true) {
+        const query = documentSearchInput.value.trim();
+        documentSearchRanges = [];
+
+        if (query) {
+          const { text, entries } = buildDocumentSearchIndex();
+          const source = text.toLocaleLowerCase();
+          const needle = query.toLocaleLowerCase();
+          let offset = 0;
+          while (offset <= source.length - needle.length) {
+            const matchStart = source.indexOf(needle, offset);
+            if (matchStart < 0) break;
+            const range = rangeForSearchOffsets(entries, matchStart, matchStart + needle.length);
+            if (range) documentSearchRanges.push(range);
+            offset = matchStart + Math.max(needle.length, 1);
+          }
+        }
+
+        if (resetIndex) documentSearchIndex = documentSearchRanges.length ? 0 : -1;
+        else if (documentSearchIndex >= documentSearchRanges.length) documentSearchIndex = documentSearchRanges.length - 1;
+
+        const hasResults = documentSearchRanges.length > 0;
+        documentSearchCount.textContent = hasResults ? `${documentSearchIndex + 1} / ${documentSearchRanges.length}` : '0 / 0';
+        searchPreviousButton.disabled = !hasResults;
+        searchNextButton.disabled = !hasResults;
+        focusDocumentSearchMatch();
+      }
+
+      function moveDocumentSearch(step) {
+        if (!documentSearchRanges.length) return;
+        documentSearchIndex = (documentSearchIndex + step + documentSearchRanges.length) % documentSearchRanges.length;
+        documentSearchCount.textContent = `${documentSearchIndex + 1} / ${documentSearchRanges.length}`;
+        focusDocumentSearchMatch();
+      }
+
+      function openDocumentSearch() {
+        closeMobilePublishPreview();
+        documentSearch.hidden = false;
+        searchToggle.setAttribute('aria-expanded', 'true');
+        updateDocumentSearch(true);
+        window.setTimeout(() => {
+          documentSearchInput.focus();
+          documentSearchInput.select();
+        }, 0);
+      }
+
+      function closeDocumentSearch() {
+        documentSearch.hidden = true;
+        searchToggle.setAttribute('aria-expanded', 'false');
+        clearDocumentSearchHighlights();
+        savedEditorRange = null;
+        lastToolbarTarget = null;
+        lastToolbarBlocks = [];
+      }
+
+      function toggleDocumentSearch() {
+        if (documentSearch.hidden) openDocumentSearch();
+        else closeDocumentSearch();
+      }
+
+      function refreshMobilePublishPreview() {
+        const cleanClone = sanitizedEditorClone();
+        const phoneViewport = document.createElement('div');
+        const phoneViewportWidth = 390;
+        phoneViewport.className = 'publish-preview-viewport';
+        phoneViewport.style.zoom = String((publishPreviewScreen.clientWidth || 300) / phoneViewportWidth);
+        phoneViewport.replaceChildren(...cleanClone.childNodes);
+        publishPreviewScreen.replaceChildren(phoneViewport);
+      }
+
+      function openMobilePublishPreview() {
+        window.clearTimeout(mobilePreviewCloseTimer);
+        closeDocumentSearch();
+        mobilePublishPreview.hidden = false;
+        refreshMobilePublishPreview();
+        mobilePreviewToggle.setAttribute('aria-expanded', 'true');
+      }
+
+      function closeMobilePublishPreview() {
+        window.clearTimeout(mobilePreviewCloseTimer);
+        mobilePublishPreview.hidden = true;
+        mobilePreviewToggle.setAttribute('aria-expanded', 'false');
+      }
+
+      function scheduleMobilePublishPreviewClose() {
+        window.clearTimeout(mobilePreviewCloseTimer);
+        mobilePreviewCloseTimer = window.setTimeout(closeMobilePublishPreview, 180);
+      }
+
+      function availableEditorWidth() {
+        const style = getComputedStyle(editorWrap);
+        return Math.max(320, editorWrap.clientWidth - pxValue(style.paddingLeft) - pxValue(style.paddingRight));
+      }
+
+      function setEditorWidth(width, persist = true) {
+        if (window.matchMedia('(max-width: 760px)').matches) {
+          editorResizeShell.style.width = '';
+          return;
+        }
+        const max = availableEditorWidth();
+        const min = Math.min(460, max);
+        const next = Math.max(min, Math.min(max, Math.round(width)));
+        editorResizeShell.style.width = `${next}px`;
+        if (persist) {
+          try { localStorage.setItem(EDITOR_WIDTH_STORAGE_KEY, String(next)); } catch {}
+        }
+      }
+
+      function installEditorResizer() {
+        let savedWidth = 820;
+        try { savedWidth = Number(localStorage.getItem(EDITOR_WIDTH_STORAGE_KEY)) || 820; } catch {}
+        setEditorWidth(savedWidth, false);
+
+        document.querySelectorAll('[data-resize-edge]').forEach((handle) => {
+          handle.addEventListener('pointerdown', (event) => {
+            if (window.matchMedia('(max-width: 760px)').matches) return;
+            event.preventDefault();
+            const startX = event.clientX;
+            const startWidth = editorResizeShell.getBoundingClientRect().width;
+            const direction = handle.dataset.resizeEdge === 'left' ? -1 : 1;
+            handle.setPointerCapture(event.pointerId);
+            const move = (moveEvent) => setEditorWidth(startWidth + (moveEvent.clientX - startX) * direction * 2, false);
+            const finish = () => {
+              handle.removeEventListener('pointermove', move);
+              handle.removeEventListener('pointerup', finish);
+              handle.removeEventListener('pointercancel', finish);
+              setEditorWidth(editorResizeShell.getBoundingClientRect().width, true);
+            };
+            handle.addEventListener('pointermove', move);
+            handle.addEventListener('pointerup', finish);
+            handle.addEventListener('pointercancel', finish);
+          });
+          handle.addEventListener('dblclick', () => setEditorWidth(availableEditorWidth()));
+          handle.addEventListener('keydown', (event) => {
+            if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+            event.preventDefault();
+            const delta = event.key === 'ArrowRight' ? 24 : -24;
+            setEditorWidth(editorResizeShell.getBoundingClientRect().width + delta);
+          });
+        });
+
+        window.addEventListener('resize', () => setEditorWidth(editorResizeShell.getBoundingClientRect().width, false));
+      }
+
+      function bodyStyle(fontFamily = selectedFontStack, size = currentBodySize, indent = currentIndent) {
+        return `margin:0 ${indent}px 24px;font-size:${size}px;line-height:1.8;color:${BODY_COLOR};text-align:left;font-family:${fontFamily};`;
+      }
+
+      function titleStyle(fontFamily = selectedFontStack, size = currentTitleSize, color = currentTitleColor, indent = currentIndent) {
+        return `margin:48px ${indent}px 24px;font-size:${size}px;line-height:1.35;color:${color};font-weight:700;text-align:left;font-family:${fontFamily};`;
+      }
+
+      function emphasisStyle(fontFamily = selectedFontStack, color = currentAccentColor) {
+        return `font-size:${currentBodySize}px;line-height:1.8;color:${color};font-weight:700;font-family:${fontFamily};`;
+      }
+
+      function blueEmphasisStyle(fontFamily = selectedFontStack, color = currentAccentColor) {
+        return `font-size:${currentBodySize}px;line-height:1.8;color:${color};font-weight:700;font-family:${fontFamily};`;
+      }
+
+      function authorStyle(fontFamily = selectedFontStack, indent = currentIndent) {
+        return `margin:0 ${indent}px 24px;font-size:14px;line-height:1.6;color:#888888;text-align:left;font-family:${fontFamily};`;
+      }
+
+      function introStyle(fontFamily = selectedFontStack, indent = currentIndent) {
+        return bodyStyle(fontFamily, currentBodySize, indent);
+      }
+
+      function quoteStyle(fontFamily = selectedFontStack, indent = currentIndent) {
+        return `margin:0 ${indent}px 24px;padding:0 0 0 14px;border-left:3px solid ${currentAccentColor};font-size:${currentBodySize}px;line-height:1.9;color:#666666;text-align:left;font-family:${fontFamily};`;
+      }
+
+      function setThemeColor(color) {
+        currentTitleColor = color;
+        currentAccentColor = color;
+        document.documentElement.style.setProperty('--orange', color);
+        currentColorDot.style.setProperty('--current-theme-color', color);
+      }
+
+      function syncThemeEmphasis() {
+        editor.querySelectorAll('strong, b, mark, [data-wechat-role="emphasis"], [data-wechat-role="emphasis-blue"], [data-wechat-role="emphasis-color"], span[style*="font-weight"], font[style*="font-weight"]').forEach((element) => {
+          if (element.closest('[data-wechat-role="chapter-title"]')) return;
+          const explicitEmphasis = element.matches('strong, b, mark, [data-wechat-role="emphasis"], [data-wechat-role="emphasis-blue"], [data-wechat-role="emphasis-color"]');
+          if (!explicitEmphasis && Number(getComputedStyle(element).fontWeight) < 600) return;
+          const keepItalic = getComputedStyle(element).fontStyle === 'italic';
+          element.dataset.wechatRole = 'emphasis';
+          element.setAttribute('style', emphasisStyle(element.style.fontFamily || selectedFontStack));
+          if (keepItalic) element.style.fontStyle = 'italic';
+          element.querySelectorAll('[style*="color"], font[color]').forEach((child) => {
+            child.style.color = currentAccentColor;
+            child.style.fontWeight = '700';
+            child.removeAttribute('color');
+          });
+        });
+
+        editor.querySelectorAll('span[style*="color"], font[color]').forEach((element) => {
+          const themedParent = element.closest('[data-wechat-role="chapter-title"], strong, b, mark, [data-wechat-role="emphasis"]');
+          if (!themedParent) {
+            element.style.removeProperty('color');
+            element.removeAttribute('color');
+          }
+        });
+
+        [...editor.children].forEach((block) => {
+          const role = block.dataset.wechatRole;
+          if (role !== 'chapter-title' && role !== 'intro' && role !== 'quote') {
+            block.style.color = role === 'author' ? '#888888' : BODY_COLOR;
+          }
+        });
+      }
+
+      function syncThemeColor() {
+        const titleBlocks = [...editor.children]
+          .filter((block) => block.dataset.wechatRole !== 'quote' && isTitleBlock(block));
+        titleBlocks.forEach((block) => {
+          block.dataset.wechatRole = 'chapter-title';
+          block.setAttribute('style', titleStyle(block.style.fontFamily || selectedFontStack));
+          const numberPart = block.querySelector('[data-wechat-title-part="number"]');
+          const boxPart = block.querySelector('[data-wechat-title-part="box"]');
+          block.querySelectorAll('*').forEach((child) => {
+            child.style.fontWeight = '700';
+            child.removeAttribute('color');
+            if (boxPart && (child === boxPart || boxPart.contains(child))) {
+              child.style.color = '#ffffff';
+              if (child === boxPart) child.style.backgroundColor = currentTitleColor;
+            } else {
+              child.style.color = currentTitleColor;
+              if (child === numberPart) child.style.backgroundColor = 'transparent';
+            }
+          });
+        });
+
+        syncThemeEmphasis();
+        editor.querySelectorAll('[data-wechat-role="intro"]').forEach((block) => block.setAttribute('style', introStyle(block.style.fontFamily || selectedFontStack)));
+        editor.querySelectorAll('[data-wechat-role="quote"]').forEach((block) => block.setAttribute('style', quoteStyle(block.style.fontFamily || selectedFontStack)));
+      }
+
+      function detectTopAuthorLine() {
+        const firstBlock = [...editor.children].find((block) => block.textContent.trim());
+        if (!firstBlock || !authorPattern.test(firstBlock.textContent.trim())) return false;
+        firstBlock.dataset.wechatRole = 'author';
+        firstBlock.setAttribute('style', authorStyle(firstBlock.style.fontFamily || selectedFontStack));
+        return true;
+      }
+
+      function rememberEditorSelection() {
+        if (!documentSearch.hidden) return;
+        const selection = window.getSelection();
+        if (!selection.rangeCount || selection.isCollapsed || !editor.contains(selection.anchorNode) || !editor.contains(selection.focusNode)) return;
+        const range = selection.getRangeAt(0);
+        savedEditorRange = range.cloneRange();
+        lastToolbarBlocks = blocksForRange(range);
+      }
+
+      function restoreEditorSelection() {
+        const selection = window.getSelection();
+        const currentIsInEditor = selection.rangeCount && editor.contains(selection.anchorNode) && editor.contains(selection.focusNode);
+        if (currentIsInEditor && !selection.isCollapsed) return true;
+        if (savedEditorRange) {
+          try {
+            if (editor.contains(savedEditorRange.commonAncestorContainer)) {
+              selection.removeAllRanges();
+              selection.addRange(savedEditorRange);
+              return true;
+            }
+          } catch {
+            savedEditorRange = null;
+          }
+        }
+        return currentIsInEditor;
+      }
+
+      function keepNodeSelected(node) {
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        savedEditorRange = range.cloneRange();
+      }
+
+      function keepBlocksSelected(blocks) {
+        const connectedBlocks = blocks.filter((block) => block?.isConnected && editor.contains(block));
+        if (!connectedBlocks.length) return;
+        const range = document.createRange();
+        range.setStart(connectedBlocks[0], 0);
+        range.setEnd(connectedBlocks.at(-1), connectedBlocks.at(-1).childNodes.length);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        savedEditorRange = range.cloneRange();
+        lastToolbarBlocks = connectedBlocks;
+        lastToolbarTarget = connectedBlocks.at(-1);
+      }
+
+      function blocksForRange(range) {
+        const allBlocks = [...editor.children].filter((node) => node.matches('p, div, h1, h2, h3, h4'));
+        const closestBlock = (node, offset, isEnd) => {
+          if (node === editor) {
+            const index = isEnd ? Math.max(0, offset - 1) : Math.min(offset, allBlocks.length - 1);
+            return allBlocks[index];
+          }
+          if (node?.nodeType === Node.TEXT_NODE) node = node.parentElement;
+          return node?.closest?.('p, div, h1, h2, h3, h4');
+        };
+        const startBlock = closestBlock(range.startContainer, range.startOffset, false);
+        const endBlock = closestBlock(range.endContainer, range.endOffset, true);
+        const startIndex = allBlocks.indexOf(startBlock);
+        const endIndex = allBlocks.indexOf(endBlock);
+        if (startIndex < 0 || endIndex < 0) return [];
+        return allBlocks.slice(Math.min(startIndex, endIndex), Math.max(startIndex, endIndex) + 1);
+      }
+
+      function targetBlocks() {
+        const allBlocks = [...editor.children].filter((node) => node.matches('p, div, h1, h2, h3, h4'));
+        const selection = window.getSelection();
+        if (selection.rangeCount && !selection.isCollapsed && editor.contains(selection.anchorNode)) {
+          const range = selection.getRangeAt(0);
+          const selected = blocksForRange(range);
+          if (selected.length) return selected;
+        }
+
+        const remembered = lastToolbarBlocks.filter((block) => block?.isConnected && editor.contains(block));
+        if (remembered.length) return remembered;
+
+        let node = selection.anchorNode;
+        if (node?.nodeType === Node.TEXT_NODE) node = node.parentElement;
+        const block = node?.closest?.('p, div, h1, h2, h3, h4');
+        return block && editor.contains(block) ? [block] : [];
+      }
+
+      function updateHistoryButtons() {
+        undoButton.disabled = undoStack.length === 0;
+        redoButton.disabled = redoStack.length === 0;
+        undoButton.title = `撤销（可用 ${undoStack.length}/10 步）`;
+        redoButton.title = `重做（可用 ${redoStack.length}/10 步）`;
+      }
+
+      function sanitizedEditorClone() {
+        const clone = editor.cloneNode(true);
+        clone.removeAttribute('id');
+        clone.removeAttribute('contenteditable');
+        clone.removeAttribute('aria-label');
+        clone.querySelectorAll('[data-format-warning]').forEach((node) => node.removeAttribute('data-format-warning'));
+        return clone;
+      }
+
+      function sanitizedEditorHtml() {
+        return sanitizedEditorClone().innerHTML.trim();
+      }
+
+      function resetEditorHistory() {
+        window.clearTimeout(historyTimer);
+        undoStack = [];
+        redoStack = [];
+        lastHistoryHtml = sanitizedEditorHtml();
+        updateHistoryButtons();
+      }
+
+      function commitEditorHistory() {
+        window.clearTimeout(historyTimer);
+        const currentHtml = sanitizedEditorHtml();
+        if (!lastHistoryHtml) {
+          lastHistoryHtml = currentHtml;
+          updateHistoryButtons();
+          return;
+        }
+        if (currentHtml === lastHistoryHtml) return;
+        undoStack.push(lastHistoryHtml);
+        if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
+        redoStack = [];
+        lastHistoryHtml = currentHtml;
+        updateHistoryButtons();
+      }
+
+      function scheduleEditorHistory() {
+        window.clearTimeout(historyTimer);
+        historyTimer = window.setTimeout(commitEditorHistory, 180);
+      }
+
+      function applyHistorySnapshot(html) {
+        window.getSelection()?.removeAllRanges();
+        savedEditorRange = null;
+        lastToolbarTarget = null;
+        lastToolbarBlocks = [];
+        editor.innerHTML = html;
+        lastHistoryHtml = html;
+        updateOutput();
+        scheduleValidation();
+        updateHistoryButtons();
+      }
+
+      function undoEditorChange() {
+        commitEditorHistory();
+        if (!undoStack.length) return;
+        const currentHtml = sanitizedEditorHtml();
+        const previousHtml = undoStack.pop();
+        redoStack.push(currentHtml);
+        if (redoStack.length > HISTORY_LIMIT) redoStack.shift();
+        applyHistorySnapshot(previousHtml);
+      }
+
+      function redoEditorChange() {
+        commitEditorHistory();
+        if (!redoStack.length) return;
+        const currentHtml = sanitizedEditorHtml();
+        const nextHtml = redoStack.pop();
+        undoStack.push(currentHtml);
+        if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
+        applyHistorySnapshot(nextHtml);
+      }
+
+      function rememberOriginalArticle(force = false) {
+        if (hasUserOriginal && !force) return;
+        originalArticleHtml = sanitizedEditorHtml();
+        hasUserOriginal = true;
+        resetEditorHistory();
+      }
+
+      function restoreOriginalArticle() {
+        if (!originalArticleHtml) return;
+        window.getSelection()?.removeAllRanges();
+        savedEditorRange = null;
+        lastToolbarTarget = null;
+        lastToolbarBlocks = [];
+        editor.innerHTML = originalArticleHtml;
+        updateOutput();
+        renderChecks(null);
+        resetEditorHistory();
+      }
+
+      function restoreSample() {
+        savedEditorRange = null;
+        lastToolbarTarget = null;
+        lastToolbarBlocks = [];
+        window.getSelection()?.removeAllRanges();
+        editor.innerHTML = sampleTemplate.innerHTML.trim();
+        formatAll();
+        originalArticleHtml = sanitizedEditorHtml();
+        hasUserOriginal = false;
+        updateOutput();
+        renderChecks(null);
+        resetEditorHistory();
+      }
+
+      function convertMarkdownEmphasis(root) {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        const nodes = [];
+        while (walker.nextNode()) nodes.push(walker.currentNode);
+
+        nodes.forEach((node) => {
+          if (!node.nodeValue.includes('**')) return;
+          const parts = node.nodeValue.split(/(\*\*[^*]+\*\*)/g);
+          if (parts.length === 1) return;
+          const fragment = document.createDocumentFragment();
+          parts.forEach((part) => {
+            if (/^\*\*[^*]+\*\*$/.test(part)) {
+              const strong = document.createElement('strong');
+              strong.textContent = part.slice(2, -2);
+              fragment.appendChild(strong);
+            } else if (part) {
+              fragment.appendChild(document.createTextNode(part));
+            }
+          });
+          node.replaceWith(fragment);
+        });
+      }
+
+      function normalizeTopLevelBlocks() {
+        [...editor.childNodes].forEach((node) => {
+          if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
+            const paragraph = document.createElement('p');
+            paragraph.textContent = node.textContent;
+            node.replaceWith(paragraph);
+          }
+        });
+
+        [...editor.children].forEach((block) => {
+          if (block.tagName === 'DIV') {
+            const paragraph = document.createElement('p');
+            paragraph.innerHTML = block.innerHTML;
+            block.replaceWith(paragraph);
+          }
+        });
+      }
+
+      function isTitleBlock(block) {
+        const tagIsHeading = /^H[1-4]$/.test(block.tagName);
+        const explicitRole = block.dataset.wechatRole === 'chapter-title';
+        const text = block.textContent.trim();
+        const semanticCandidate = text.length <= 42 && titlePattern.test(text);
+        return tagIsHeading || explicitRole || semanticCandidate;
+      }
+
+      function stripTitleNumber(text) {
+        return text
+          .replace(/^第[一二三四五六七八九十百零\d]+(?:章|节|部分|篇)\s*/, '')
+          .replace(/^[一二三四五六七八九十百零\d]+[\.\uff0e、]\s*/, '')
+          .trim();
+      }
+
+      function chineseNumber(index) {
+        const digits = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
+        if (index <= 10) return digits[index];
+        if (index < 20) return `十${digits[index - 10]}`;
+        if (index < 100) return `${digits[Math.floor(index / 10)]}十${digits[index % 10]}`;
+        return String(index);
+      }
+
+      function ensureChapterTitleBlocks() {
+        const promoted = [];
+        [...editor.children].forEach((sourceBlock) => {
+          if (!isTitleBlock(sourceBlock)) return;
+          let block = sourceBlock;
+          if (block.tagName !== 'P') {
+            const paragraph = document.createElement('p');
+            paragraph.append(...block.childNodes);
+            block.replaceWith(paragraph);
+            block = paragraph;
+          }
+          const text = block.textContent.trim();
+          block.dataset.wechatRole = 'chapter-title';
+          block.dataset.titleOriginal ||= text;
+          block.dataset.titleBase ||= stripTitleNumber(text) || text;
+          block.setAttribute('style', titleStyle(block.style.fontFamily || selectedFontStack));
+          promoted.push(block);
+        });
+        return promoted;
+      }
+
+      function applyTitleNumbering(style = currentTitleNumberStyle, shouldUpdate = true) {
+        ensureChapterTitleBlocks();
+        const titles = [...editor.children].filter((block) => block.dataset.wechatRole === 'chapter-title');
+        titles.forEach((block, index) => {
+          const currentText = block.textContent.trim();
+          if (!block.dataset.titleOriginal) {
+            block.dataset.titleOriginal = currentText;
+            block.dataset.titleBase = stripTitleNumber(currentText) || currentText;
+          }
+          const base = block.dataset.titleBase || stripTitleNumber(currentText) || currentText;
+          if (style === 'chinese-line' || style === 'chinese-box') {
+            const numberLine = document.createElement('span');
+            numberLine.dataset.wechatTitlePart = 'number';
+            numberLine.setAttribute(
+              'style',
+              `display:block;margin:0 0 ${style === 'chinese-box' ? 6 : 0}px;padding:0;` +
+              `font-size:${currentTitleSize}px;line-height:1.35;letter-spacing:2px;` +
+              `color:${currentTitleColor};font-weight:700;font-family:${selectedFontStack};`
+            );
+            numberLine.textContent = chineseNumber(index + 1);
+            const titleLine = document.createElement('span');
+            if (style === 'chinese-box') {
+              titleLine.dataset.wechatTitlePart = 'box';
+              titleLine.setAttribute(
+                'style',
+                `display:inline;width:auto;margin:0;padding:2px 6px;box-sizing:border-box;` +
+                `box-decoration-break:clone;-webkit-box-decoration-break:clone;` +
+                `font-size:${currentTitleSize}px;line-height:1.35;letter-spacing:2px;` +
+                `background-color:${currentTitleColor};color:#ffffff;font-weight:700;font-family:${selectedFontStack};`
+              );
+            } else {
+              titleLine.dataset.wechatTitlePart = 'title';
+              titleLine.setAttribute(
+                'style',
+                `display:block;margin:0;padding:0;font-size:${currentTitleSize}px;line-height:1.35;` +
+                `color:${currentTitleColor};font-weight:700;font-family:${selectedFontStack};`
+              );
+            }
+            titleLine.textContent = base;
+            block.replaceChildren(numberLine, titleLine);
+          } else {
+            const nextText = style === 'chinese'
+              ? `${chineseNumber(index + 1)}、${base}`
+              : style === 'none'
+                ? base
+                : `${index + 1}. ${base}`;
+            block.textContent = nextText;
+          }
+          block.setAttribute('style', titleStyle(block.style.fontFamily || selectedFontStack));
+        });
+        currentTitleNumberStyle = ['arabic', 'chinese', 'chinese-line', 'chinese-box', 'none'].includes(style) ? style : 'arabic';
+        currentTitleNumberLabel.textContent = TITLE_NUMBER_LABELS[currentTitleNumberStyle];
+        if (shouldUpdate) updateOutput();
+      }
+
+      function formatAll() {
+        convertMarkdownEmphasis(editor);
+        normalizeTopLevelBlocks();
+
+        const sourceBlocks = [...editor.children];
+        const firstTitleIndex = sourceBlocks.findIndex(isTitleBlock);
+        const firstContentIndex = sourceBlocks.findIndex((block) => !authorPattern.test(block.textContent.trim()));
+        sourceBlocks.forEach((sourceBlock, index) => {
+          const text = sourceBlock.textContent.trim();
+          if (sourceBlock.dataset.wechatRole === 'quote') {
+            sourceBlock.setAttribute('style', quoteStyle());
+          } else if (isTitleBlock(sourceBlock)) {
+            const paragraph = document.createElement('p');
+            paragraph.dataset.wechatRole = 'chapter-title';
+            paragraph.dataset.titleOriginal = sourceBlock.dataset.titleOriginal || text;
+            paragraph.dataset.titleBase = sourceBlock.dataset.titleBase || stripTitleNumber(text) || text;
+            paragraph.setAttribute('style', titleStyle());
+            const span = document.createElement('span');
+            span.setAttribute('style', `font-size:${currentTitleSize}px;line-height:1.35;color:${currentTitleColor};font-weight:700;font-family:${selectedFontStack};`);
+            span.textContent = text;
+            paragraph.appendChild(span);
+            sourceBlock.replaceWith(paragraph);
+          } else if (authorPattern.test(text)) {
+            sourceBlock.dataset.wechatRole = 'author';
+            sourceBlock.setAttribute('style', authorStyle());
+          } else if ((firstTitleIndex > 0 && index < firstTitleIndex) || (firstTitleIndex < 0 && index === firstContentIndex)) {
+            sourceBlock.dataset.wechatRole = 'intro';
+            sourceBlock.setAttribute('style', introStyle());
+          } else {
+            sourceBlock.dataset.wechatRole = 'body';
+            sourceBlock.setAttribute('style', bodyStyle());
+          }
+        });
+
+        editor.querySelectorAll('font').forEach((element) => {
+          element.removeAttribute('face');
+          element.removeAttribute('size');
+        });
+        editor.querySelectorAll('span, font, em, i').forEach((element) => {
+          if (element.closest('[data-wechat-role="chapter-title"]')) return;
+          if (element.closest('strong, b, mark, [data-wechat-role="emphasis"], [data-wechat-role="emphasis-blue"], [data-wechat-role="emphasis-color"]')) return;
+          element.style.removeProperty('font-size');
+          element.style.removeProperty('font-family');
+        });
+        editor.querySelectorAll('strong, b, mark, [data-wechat-role="emphasis"], [data-wechat-role="emphasis-blue"], [data-wechat-role="emphasis-color"]').forEach((element) => {
+          if (element.closest('[data-wechat-role="chapter-title"]')) return;
+          const keepItalic = getComputedStyle(element).fontStyle === 'italic';
+          element.dataset.wechatRole = 'emphasis';
+          element.setAttribute('style', emphasisStyle(selectedFontStack));
+          if (keepItalic) element.style.fontStyle = 'italic';
+          element.querySelectorAll('span, font, em, i, strong, b, mark').forEach((child) => {
+            child.removeAttribute('face');
+            child.removeAttribute('size');
+            child.style.fontSize = `${currentBodySize}px`;
+            child.style.fontFamily = selectedFontStack;
+            child.style.color = currentAccentColor;
+            child.style.fontWeight = '700';
+          });
+        });
+
+        applyTitleNumbering(currentTitleNumberStyle, false);
+        syncThemeColor();
+        validateFormat();
+      }
+
+      function applyBlockRole(role, size) {
+        if (role === 'heading') {
+          currentTitleSize = Number(size) || currentTitleSize;
+          currentTitleSizeLabel.textContent = `${currentTitleSize}`;
+        } else {
+          currentBodySize = Number(size) || currentBodySize;
+          currentBodySizeLabel.textContent = `${currentBodySize}`;
+        }
+
+        const selection = window.getSelection();
+        const hasExplicitSelection = selection.rangeCount && !selection.isCollapsed && editor.contains(selection.anchorNode) && editor.contains(selection.focusNode);
+        if (!hasExplicitSelection) {
+          formatAll();
+          return;
+        }
+
+        const blocks = targetBlocks();
+        if (!blocks.length) return;
+
+        const normalizedBlocks = blocks.map((sourceBlock) => {
+          const previousRole = sourceBlock.dataset.wechatRole;
+          let block = sourceBlock;
+          if (block.tagName !== 'P') {
+            const paragraph = document.createElement('p');
+            paragraph.append(...block.childNodes);
+            block.replaceWith(paragraph);
+            block = paragraph;
+          }
+
+          block.querySelectorAll('strong, b, mark, [data-wechat-role="emphasis"], [data-wechat-role="emphasis-blue"]').forEach((element) => {
+            element.replaceWith(...element.childNodes);
+          });
+
+          if (previousRole === 'chapter-title') {
+            block.querySelectorAll(':scope > span').forEach((span) => {
+              if (pxValue(span.style.fontSize) >= 20) span.replaceWith(...span.childNodes);
+            });
+          }
+
+          if (role === 'heading') {
+            block.dataset.wechatRole = 'chapter-title';
+            block.setAttribute('style', titleStyle(block.style.fontFamily || selectedFontStack, currentTitleSize));
+          } else {
+            block.dataset.wechatRole = 'body';
+            block.setAttribute('style', bodyStyle(block.style.fontFamily || selectedFontStack, currentBodySize));
+          }
+          block.normalize();
+          return block;
+        });
+
+        if (role === 'heading') applyTitleNumbering(currentTitleNumberStyle, false);
+        keepBlocksSelected(normalizedBlocks);
+        updateOutput();
+      }
+
+      function applySelectedFont(fontKey) {
+        selectedFontKey = FONT_STACKS[fontKey] ? fontKey : selectedFontKey;
+        selectedFontStack = FONT_STACKS[selectedFontKey] || FONT_STACKS.system;
+        restoreEditorSelection();
+        const selection = window.getSelection();
+        if (!selection.rangeCount || selection.isCollapsed || !editor.contains(selection.anchorNode)) return;
+        document.execCommand('styleWithCSS', false, true);
+        document.execCommand('fontName', false, selectedFontStack);
+        updateOutput();
+      }
+
+      function applyParagraphIndent(value) {
+        const nextIndent = [8, 16].includes(Number(value)) ? Number(value) : 8;
+        currentIndent = nextIndent;
+        currentIndentLabel.textContent = String(currentIndent);
+        restoreEditorSelection();
+        let blocks = targetBlocks();
+        if (!blocks.length) blocks = [...editor.children].filter((node) => node.matches('p, div, h1, h2, h3, h4'));
+        blocks.forEach((block) => {
+          block.style.marginLeft = `${currentIndent}px`;
+          block.style.marginRight = `${currentIndent}px`;
+        });
+        if (blocks.length) keepBlocksSelected(blocks);
+        updateOutput();
+        scheduleValidation();
+      }
+
+      function applyQuote() {
+        const blocks = targetBlocks();
+        if (!blocks.length) return;
+        const isQuotedBlock = (block) => block.dataset.wechatRole === 'quote' || block.hasAttribute('data-quote-previous-role');
+        const shouldRemoveQuote = blocks.every(isQuotedBlock);
+        const quotedBlocks = blocks.map((sourceBlock) => {
+          const sourceRole = sourceBlock.dataset.wechatRole || (isTitleBlock(sourceBlock) ? 'chapter-title' : 'body');
+          let block = sourceBlock;
+          if (block.tagName !== 'P') {
+            const paragraph = document.createElement('p');
+            paragraph.append(...block.childNodes);
+            block.replaceWith(paragraph);
+            block = paragraph;
+          }
+
+          const fontFamily = block.style.fontFamily || selectedFontStack;
+          if (shouldRemoveQuote) {
+            const previousRole = block.dataset.quotePreviousRole || 'body';
+            delete block.dataset.quotePreviousRole;
+            block.dataset.wechatRole = previousRole;
+            if (previousRole === 'chapter-title') block.setAttribute('style', titleStyle(fontFamily));
+            else if (previousRole === 'intro') block.setAttribute('style', introStyle(fontFamily));
+            else if (previousRole === 'author') block.setAttribute('style', authorStyle(fontFamily));
+            else block.setAttribute('style', bodyStyle(fontFamily));
+          } else {
+            if (block.dataset.wechatRole !== 'quote') {
+              block.dataset.quotePreviousRole = sourceRole;
+            }
+            block.dataset.wechatRole = 'quote';
+            block.setAttribute('style', quoteStyle(fontFamily));
+          }
+          return block;
+        });
+        keepBlocksSelected(quotedBlocks);
+        updateOutput();
+      }
+
+      function applyEmphasisRole(role) {
+        const emphasisSelector = 'strong, b, mark, [data-wechat-role="emphasis"], [data-wechat-role="emphasis-blue"]';
+        const blocks = targetBlocks();
+        if (blocks.length > 1) {
+          const fullBlockEmphasis = blocks.map((block) => {
+            const meaningfulChildren = [...block.childNodes].filter((node) => node.nodeType !== Node.TEXT_NODE || node.textContent.trim());
+            if (meaningfulChildren.length !== 1) return null;
+            const candidate = meaningfulChildren[0];
+            return candidate.nodeType === Node.ELEMENT_NODE && candidate.matches(emphasisSelector)
+              ? candidate
+              : null;
+          });
+
+          if (fullBlockEmphasis.every(Boolean)) {
+            fullBlockEmphasis.forEach((element) => element.replaceWith(...element.childNodes));
+            blocks.forEach((block) => block.normalize());
+            keepBlocksSelected(blocks);
+            updateOutput();
+            return;
+          }
+
+          const normalizedBlocks = blocks.map((sourceBlock) => {
+            let block = sourceBlock;
+            if (block.tagName !== 'P') {
+              const paragraph = document.createElement('p');
+              paragraph.append(...block.childNodes);
+              block.replaceWith(paragraph);
+              block = paragraph;
+            }
+            block.querySelectorAll(':scope > span').forEach((span) => {
+              if (pxValue(span.style.fontSize) >= 20) span.replaceWith(...span.childNodes);
+            });
+            block.querySelectorAll(emphasisSelector).forEach((element) => {
+              element.replaceWith(...element.childNodes);
+            });
+            block.dataset.wechatRole = 'body';
+            block.setAttribute('style', bodyStyle(block.style.fontFamily || selectedFontStack));
+            block.normalize();
+            const strong = document.createElement('strong');
+            strong.dataset.wechatRole = role;
+            strong.setAttribute('style', role === 'emphasis-blue' ? blueEmphasisStyle(block.style.fontFamily || selectedFontStack) : emphasisStyle(block.style.fontFamily || selectedFontStack));
+            strong.append(...block.childNodes);
+            block.appendChild(strong);
+            return block;
+          });
+          keepBlocksSelected(normalizedBlocks);
+          updateOutput();
+          return;
+        }
+
+        const selection = window.getSelection();
+        let range = selection.rangeCount && !selection.isCollapsed && editor.contains(selection.anchorNode)
+          ? selection.getRangeAt(0)
+          : null;
+        let emphasis = lastToolbarTarget?.isConnected && lastToolbarTarget.matches?.(emphasisSelector)
+          ? lastToolbarTarget
+          : null;
+
+        if (!range && !emphasis && lastToolbarTarget?.isConnected && editor.contains(lastToolbarTarget)) {
+          keepNodeSelected(lastToolbarTarget);
+          range = window.getSelection().getRangeAt(0);
+        }
+
+        let sourceNode = emphasis || range?.commonAncestorContainer || lastToolbarTarget;
+        if (sourceNode?.nodeType === Node.TEXT_NODE) sourceNode = sourceNode.parentElement;
+        const sourceBlock = sourceNode?.matches?.('p, div, h1, h2, h3, h4')
+          ? sourceNode
+          : sourceNode?.closest?.('p, div, h1, h2, h3, h4');
+        if (sourceBlock?.dataset.wechatRole === 'chapter-title') {
+          sourceBlock.querySelectorAll(':scope > span').forEach((span) => {
+            if (pxValue(span.style.fontSize) >= 20) span.replaceWith(...span.childNodes);
+          });
+          sourceBlock.dataset.wechatRole = 'body';
+          sourceBlock.setAttribute('style', bodyStyle());
+          sourceBlock.normalize();
+          lastToolbarTarget = sourceBlock;
+          emphasis = null;
+          keepNodeSelected(sourceBlock);
+          range = window.getSelection().getRangeAt(0);
+        }
+
+        if (!emphasis && range) {
+          const selectedText = range.toString().trim();
+          const candidates = [...editor.querySelectorAll(emphasisSelector)]
+            .filter((element) => {
+              try { return range.intersectsNode(element) && element.textContent.trim() === selectedText; } catch { return false; }
+            })
+            .sort((a, b) => a.textContent.length - b.textContent.length);
+          emphasis = candidates[0];
+        }
+
+        if (emphasis) {
+          const parent = emphasis.parentNode;
+          const children = [...emphasis.childNodes];
+          emphasis.replaceWith(...children);
+          parent?.normalize();
+          lastToolbarTarget = sourceBlock?.isConnected ? sourceBlock : parent;
+          if (sourceBlock?.isConnected) keepNodeSelected(sourceBlock);
+          updateOutput();
+          return;
+        }
+
+        if (!range) return;
+        if (!emphasis) {
+          emphasis = document.createElement('strong');
+          try {
+            range.surroundContents(emphasis);
+          } catch {
+            emphasis.appendChild(range.extractContents());
+            range.insertNode(emphasis);
+          }
+        }
+
+        emphasis.dataset.wechatRole = role;
+        emphasis.setAttribute('style', role === 'emphasis-blue' ? blueEmphasisStyle() : emphasisStyle());
+        lastToolbarTarget = emphasis;
+        keepNodeSelected(emphasis);
+        updateOutput();
+      }
+
+      function applyEmphasis() {
+        applyEmphasisRole('emphasis');
+      }
+
+      function applyBlueEmphasis() {
+        applyEmphasisRole('emphasis-blue');
+      }
+
+      function applyTextColor(color) {
+        setThemeColor(color);
+        syncThemeColor();
+        applyTitleNumbering(currentTitleNumberStyle, false);
+        updateOutput();
+      }
+
+      function applyThemeBold() {
+        applyEmphasis();
+      }
+
+      function clearFormatting() {
+        const selection = window.getSelection();
+        const affectedBlocks = targetBlocks();
+        if (!affectedBlocks.length) return;
+
+        if (selection.rangeCount && !selection.isCollapsed && editor.contains(selection.anchorNode)) {
+          document.execCommand('removeFormat', false, null);
+        }
+
+        const normalizedBlocks = affectedBlocks.map((block) => {
+          let normalizedBlock = block;
+          if (block.tagName !== 'P') {
+            normalizedBlock = document.createElement('p');
+            normalizedBlock.append(...block.childNodes);
+            block.replaceWith(normalizedBlock);
+          }
+
+          normalizedBlock.querySelectorAll('*').forEach((element) => {
+            element.removeAttribute('style');
+            element.removeAttribute('color');
+            element.removeAttribute('size');
+            element.removeAttribute('face');
+            element.removeAttribute('data-wechat-role');
+          });
+
+          normalizedBlock.querySelectorAll('font, strong, b, mark, span').forEach((element) => {
+            element.replaceWith(...element.childNodes);
+          });
+          normalizedBlock.normalize();
+          normalizedBlock.dataset.wechatRole = 'body';
+          normalizedBlock.setAttribute('style', bodyStyle());
+          return normalizedBlock;
+        });
+
+        keepBlocksSelected(normalizedBlocks);
+        updateOutput();
+      }
+
+      function pxValue(value) {
+        const number = Number.parseFloat(value || '0');
+        return Number.isFinite(number) ? number : 0;
+      }
+
+      function primaryFontName(value) {
+        return String(value || '').split(',')[0].replace(/["']/g, '').trim().toLowerCase();
+      }
+
+      function collectTypographyNodes(blocks, excludeSelector = '') {
+        const runs = [];
+        blocks.forEach((block) => {
+          const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+          while (walker.nextNode()) {
+            const textNode = walker.currentNode;
+            const weight = [...(textNode.nodeValue || '').replace(/\s/g, '')].length;
+            if (!weight) continue;
+            const element = textNode.parentElement || block;
+            if (excludeSelector && element.closest(excludeSelector)) continue;
+            runs.push({ node: element, weight });
+          }
+        });
+        return runs;
+      }
+
+      function weightedMode(runs, readValue) {
+        const weights = new Map();
+        runs.forEach((run) => {
+          const value = readValue(run.node);
+          weights.set(value, (weights.get(value) || 0) + run.weight);
+        });
+        return [...weights.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+      }
+
+      function auditTypography(runs, allowEmpty = false) {
+        const dominantSize = Number(weightedMode(runs, (node) => pxValue(getComputedStyle(node).fontSize).toFixed(2))) || 0;
+        const dominantFont = weightedMode(runs, (node) => primaryFontName(getComputedStyle(node).fontFamily)) || '';
+        const sizeErrorNodes = [...new Set(runs
+          .filter(({ node }) => Math.abs(pxValue(getComputedStyle(node).fontSize) - dominantSize) > 0.2)
+          .map(({ node }) => node))];
+        const fontErrorNodes = [...new Set(runs
+          .filter(({ node }) => primaryFontName(getComputedStyle(node).fontFamily) !== dominantFont)
+          .map(({ node }) => node))];
+        return {
+          pass: (allowEmpty && runs.length === 0) || (runs.length > 0 && sizeErrorNodes.length === 0 && fontErrorNodes.length === 0),
+          detail: runs.length ? `主流 ${dominantSize}px · 字号偏差 ${sizeErrorNodes.length} · 字体偏差 ${fontErrorNodes.length}` : '未检测到内容（已跳过）',
+          dominantSize,
+          dominantFont,
+          sizeErrorNodes,
+          fontErrorNodes
+        };
+      }
+
+      function auditAppearance(runs, allowEmpty = false) {
+        const dominantColor = weightedMode(runs, (node) => rgbToHex(getComputedStyle(node).color).toLowerCase()) || '';
+        const dominantWeight = weightedMode(runs, (node) => Number(getComputedStyle(node).fontWeight) >= 600 ? 'bold' : 'regular') || 'regular';
+        const errorNodes = [...new Set(runs.filter(({ node }) => {
+          const style = getComputedStyle(node);
+          return rgbToHex(style.color).toLowerCase() !== dominantColor || (Number(style.fontWeight) >= 600 ? 'bold' : 'regular') !== dominantWeight;
+        }).map(({ node }) => node))];
+        return {
+          pass: (allowEmpty && runs.length === 0) || (runs.length > 0 && errorNodes.length === 0),
+          detail: runs.length ? `主流 ${dominantColor} · ${dominantWeight === 'bold' ? '粗体' : '常规'} · 偏差 ${errorNodes.length}` : '未检测到内容（已跳过）',
+          errorNodes
+        };
+      }
+
+      function auditTitleAppearance(runs) {
+        const groupedRuns = new Map();
+        runs.forEach((run) => {
+          const part = run.node.closest('[data-wechat-title-part]')?.dataset.wechatTitlePart || 'regular';
+          if (!groupedRuns.has(part)) groupedRuns.set(part, []);
+          groupedRuns.get(part).push(run);
+        });
+        if (!groupedRuns.size) return auditAppearance([], true);
+        const audits = [...groupedRuns.entries()].map(([part, partRuns]) => ({ part, ...auditAppearance(partRuns, true) }));
+        const partLabels = { number: '序号', box: '标题框', title: '标题', regular: '标题' };
+        return {
+          pass: audits.every((audit) => audit.pass),
+          detail: audits.map((audit) => `${partLabels[audit.part] || audit.part}：${audit.detail}`).join(' · '),
+          errorNodes: [...new Set(audits.flatMap((audit) => audit.errorNodes))]
+        };
+      }
+
+      function clearFormatWarnings() {
+        editor.querySelectorAll('[data-format-warning]').forEach((node) => node.removeAttribute('data-format-warning'));
+      }
+
+      function markFormatWarnings(nodes, reason) {
+        const uniqueNodes = [...new Set(nodes)].filter((node) => node?.isConnected && editor.contains(node));
+        const outermostNodes = uniqueNodes.filter((node) => !uniqueNodes.some((other) => other !== node && other.contains(node)));
+        outermostNodes.forEach((node) => {
+          const existing = node.getAttribute('data-format-warning');
+          node.setAttribute('data-format-warning', existing ? `${existing}；${reason}` : reason);
+        });
+        return outermostNodes;
+      }
+
+      function revealFormatIssue(item, row) {
+        clearFormatWarnings();
+        checks.querySelectorAll('.check-row.active').forEach((node) => node.classList.remove('active'));
+        const markedNodes = markFormatWarnings(item.nodes || [], item.reason || item.label);
+        if (!markedNodes.length) return;
+        row.classList.add('active');
+        markedNodes[0].scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+      }
+
+      function validateFormat() {
+        clearFormatWarnings();
+        const blocks = [...editor.children];
+        const titles = blocks.filter((block) => block.dataset.wechatRole === 'chapter-title');
+        const bodies = blocks.filter((block) => block.dataset.wechatRole === 'body');
+        const authors = blocks.filter((block) => block.dataset.wechatRole === 'author');
+        const intros = blocks.filter((block) => block.dataset.wechatRole === 'intro');
+        const emphases = [...editor.querySelectorAll('strong, b, mark, [data-wechat-role="emphasis"], [data-wechat-role="emphasis-blue"], [data-wechat-role="emphasis-color"]')];
+        const emphasisSelector = 'strong, b, mark, [data-wechat-role="emphasis"], [data-wechat-role="emphasis-blue"], [data-wechat-role="emphasis-color"]';
+        const titleNodes = collectTypographyNodes(titles);
+        const bodyNodes = collectTypographyNodes(bodies, emphasisSelector);
+        const emphasisNodes = collectTypographyNodes(emphases);
+        const titleTypography = auditTypography(titleNodes, true);
+        const bodyTypography = auditTypography(bodyNodes);
+        const emphasisTypography = auditTypography(emphasisNodes, true);
+        const titleAppearance = auditTitleAppearance(titleNodes);
+        const bodyAppearance = auditAppearance(bodyNodes);
+        const emphasisAppearance = auditAppearance(emphasisNodes, true);
+
+        const spacedBodies = blocks.filter((block) => block.dataset.wechatRole !== 'chapter-title');
+        const dominantSpacing = Number(mode(spacedBodies.map((block) => pxValue(getComputedStyle(block).marginBottom).toFixed(2)))) || 0;
+        const spacingErrors = spacedBodies.filter((block) => Math.abs(pxValue(getComputedStyle(block).marginBottom) - dominantSpacing) > 0.2);
+        const spacingPass = spacingErrors.length === 0;
+        const dominantIndent = mode(blocks.map((block) => {
+          const style = getComputedStyle(block);
+          return `${pxValue(style.marginLeft).toFixed(2)}|${pxValue(style.marginRight).toFixed(2)}`;
+        })) || '0|0';
+        const [dominantIndentLeft, dominantIndentRight] = dominantIndent.split('|').map(Number);
+        const indentErrors = blocks.filter((block) => {
+          const style = getComputedStyle(block);
+          return Math.abs(pxValue(style.marginLeft) - dominantIndentLeft) > 0.2 || Math.abs(pxValue(style.marginRight) - dominantIndentRight) > 0.2;
+        });
+        const indentPass = indentErrors.length === 0;
+
+        const results = [
+          { label: '章节标题字体与字号', detail: titleTypography.detail, pass: titleTypography.pass, nodes: [...titleTypography.sizeErrorNodes, ...titleTypography.fontErrorNodes], reason: '标题字体或字号属于少数格式' },
+          { label: '章节标题颜色与粗细', detail: titleAppearance.detail, pass: titleAppearance.pass, nodes: titleAppearance.errorNodes, reason: '标题颜色或粗细属于少数格式' },
+          { label: '正文字体与字号', detail: bodyTypography.detail, pass: bodyTypography.pass, nodes: [...bodyTypography.sizeErrorNodes, ...bodyTypography.fontErrorNodes], reason: '正文字体或字号属于少数格式' },
+          { label: '正文颜色与粗细', detail: bodyAppearance.detail, pass: bodyAppearance.pass, nodes: bodyAppearance.errorNodes, reason: '正文颜色或粗细属于少数格式' },
+          { label: '重点字字体与字号', detail: emphasisTypography.detail, pass: emphasisTypography.pass, nodes: [...emphasisTypography.sizeErrorNodes, ...emphasisTypography.fontErrorNodes], reason: '重点字体或字号属于少数格式' },
+          { label: '重点字颜色与粗细', detail: emphasisAppearance.detail, pass: emphasisAppearance.pass, nodes: emphasisAppearance.errorNodes, reason: '重点颜色或粗细属于少数格式' },
+          { label: '语义识别', detail: `作者 ${authors.length} · 导语 ${intros.length}`, pass: true, nodes: [] },
+          { label: '两端缩进一致性', detail: `主流 ${dominantIndentLeft}px / ${dominantIndentRight}px · 偏差 ${indentErrors.length}`, pass: indentPass, nodes: indentErrors, reason: '两端缩进属于少数格式' },
+          { label: '段落间距一致性', detail: `主流 ${dominantSpacing}px · 偏差 ${spacingErrors.length}`, pass: spacingPass, nodes: spacingErrors, reason: '段落间距属于少数格式' }
+        ];
+
+        renderChecks(results);
+        results.filter((item) => !item.pass && item.nodes?.length).forEach((item) => {
+          markFormatWarnings(item.nodes, item.reason || item.label);
+        });
+        updateOutput();
+        return results.every((item) => item.pass);
+      }
+
+      function scheduleValidation() {
+        window.clearTimeout(validationTimer);
+        status.className = 'status';
+        status.innerHTML = '<span class="status-dot"></span><span>正在实时检查……</span>';
+        mobileCheckState.className = 'mobile-check-state';
+        mobileCheckState.textContent = '正在实时检查……';
+        validationTimer = window.setTimeout(validateFormat, 180);
+      }
+
+      function renderChecks(results) {
+        if (!results) {
+          status.className = 'status';
+          status.innerHTML = '<span class="status-dot"></span><span>等待检查</span>';
+          checks.innerHTML = '';
+          mobileCheckState.className = 'mobile-check-state';
+          mobileCheckState.textContent = '实时检查已开启';
+          return;
+        }
+
+        const failedResults = results
+          .map((item, index) => ({ item, index }))
+          .filter(({ item }) => !item.pass);
+        const passed = failedResults.length === 0;
+        status.className = passed ? 'status' : 'status warning';
+        status.innerHTML = `<span class="status-dot"></span><span>${passed ? '格式一致' : `${failedResults.length} 项待修正`}</span>`;
+        mobileCheckState.className = `mobile-check-state ${passed ? '' : 'warning'}`;
+        mobileCheckState.textContent = passed ? '格式一致' : '发现格式偏差';
+        checks.innerHTML = failedResults.map(({ item, index }) => {
+          const actionable = !item.pass && item.nodes?.length;
+          return `
+          <div class="check-row ${item.pass ? '' : 'fail'} ${actionable ? 'actionable' : ''}" ${actionable ? `data-check-index="${index}" role="button" tabindex="0"` : ''}>
+            <span class="swatch ${item.pass ? '' : 'space'}"></span>
+            <span>${item.label}</span>
+            <span class="result">${item.detail}${actionable ? '<small class="locate-hint">点击定位</small>' : ''}</span>
+          </div>
+        `;
+        }).join('');
+        checks.querySelectorAll('[data-check-index]').forEach((row) => {
+          const reveal = () => revealFormatIssue(results[Number(row.dataset.checkIndex)], row);
+          row.addEventListener('click', reveal);
+          row.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            reveal();
+          });
+        });
+      }
+
+      function updateOutput() {
+        htmlOutput.value = `<section style="font-size:${currentBodySize}px;line-height:1.8;color:${BODY_COLOR};text-align:left;word-break:break-word;font-family:${selectedFontStack};">\n${sanitizedEditorHtml()}\n</section>`;
+      }
+
+      function copyRichText(feedbackButton = copyButton) {
+        const copyStage = document.createElement('div');
+        const cleanClone = sanitizedEditorClone();
+        copyStage.setAttribute('style', 'position:fixed;left:-10000px;top:0;width:620px;background:#fff;pointer-events:none;');
+        copyStage.append(...cleanClone.childNodes);
+        document.body.appendChild(copyStage);
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(copyStage);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        const copied = document.execCommand('copy');
+        selection.removeAllRanges();
+        copyStage.remove();
+        const originalText = feedbackButton.textContent;
+        feedbackButton.textContent = copied ? '已复制' : '复制失败';
+        window.setTimeout(() => { feedbackButton.textContent = originalText; }, 2200);
+      }
+
+      function extractAgentJsonCandidate(value) {
+        let candidate = String(value || '').trim()
+          .replace(/^```(?:json|javascript|js)?\s*/i, '')
+          .replace(/\s*```$/i, '')
+          .trim();
+        const openers = [candidate.indexOf('{'), candidate.indexOf('｛')].filter((index) => index >= 0);
+        const firstBrace = openers.length ? Math.min(...openers) : -1;
+        const lastBrace = Math.max(candidate.lastIndexOf('}'), candidate.lastIndexOf('｝'));
+        if (firstBrace >= 0 && lastBrace > firstBrace) candidate = candidate.slice(firstBrace, lastBrace + 1);
+        return candidate;
+      }
+
+      function isJsonStringBoundary(source, quoteIndex) {
+        let cursor = quoteIndex + 1;
+        while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
+        if (cursor >= source.length) return true;
+        const next = source[cursor];
+        if (':：,;}｝]］'.includes(next)) return true;
+        if (next !== '，' && next !== '；') return false;
+
+        cursor += 1;
+        let crossedLine = false;
+        while (cursor < source.length && /\s/.test(source[cursor])) {
+          if (/\r|\n/.test(source[cursor])) crossedLine = true;
+          cursor += 1;
+        }
+        const afterSeparator = source[cursor] || '';
+        return crossedLine || '"\'“‘{[｛［}｝]］'.includes(afterSeparator);
+      }
+
+      function normalizeJsonPunctuation(value) {
+        const source = extractAgentJsonCandidate(value);
+        const quotePairs = { '"': '"', "'": "'", '“': '”', '‘': '’', '”': '”', '’': '’' };
+        const structural = { '｛': '{', '｝': '}', '［': '[', '］': ']', '：': ':', '，': ',', '；': ',', ';': ',' };
+        let output = '';
+        let inString = false;
+        let closingQuote = '';
+        let escaped = false;
+
+        for (let index = 0; index < source.length; index += 1) {
+          const character = source[index];
+          if (!inString) {
+            if (quotePairs[character]) {
+              inString = true;
+              closingQuote = quotePairs[character];
+              output += '"';
+            } else {
+              output += structural[character] || (character === '\u00a0' ? ' ' : character);
+            }
+            continue;
+          }
+
+          if (escaped) {
+            output += character;
+            escaped = false;
+            continue;
+          }
+          if (character === '\\') {
+            output += character;
+            escaped = true;
+            continue;
+          }
+          if (character === closingQuote && isJsonStringBoundary(source, index)) {
+            output += '"';
+            inString = false;
+            closingQuote = '';
+            continue;
+          }
+          if (character === '"') {
+            output += '\\"';
+          } else if (character === '\r' || character === '\n' || character === '\t') {
+            output += ' ';
+          } else {
+            output += character;
+          }
+        }
+
+        if (inString) throw new Error('字符串引号没有闭合');
+        return output;
+      }
+
+      function removeTrailingJsonCommas(value) {
+        let output = '';
+        let inString = false;
+        let escaped = false;
+        for (let index = 0; index < value.length; index += 1) {
+          const character = value[index];
+          if (inString) {
+            output += character;
+            if (escaped) escaped = false;
+            else if (character === '\\') escaped = true;
+            else if (character === '"') inString = false;
+            continue;
+          }
+          if (character === '"') {
+            inString = true;
+            output += character;
+            continue;
+          }
+          if (character === ',') {
+            let cursor = index + 1;
+            while (cursor < value.length && /\s/.test(value[cursor])) cursor += 1;
+            if (value[cursor] === '}' || value[cursor] === ']') continue;
+          }
+          output += character;
+        }
+        return output;
+      }
+
+      function parseAgentJsonPayload(value) {
+        const candidate = extractAgentJsonCandidate(value);
+        try {
+          return { payload: JSON.parse(candidate), repaired: false };
+        } catch {
+          const repairedCandidate = removeTrailingJsonCommas(normalizeJsonPunctuation(candidate));
+          return { payload: JSON.parse(repairedCandidate), repaired: repairedCandidate !== candidate };
+        }
+      }
+
+      function semanticBlocksFromPlainText(value) {
+        const normalized = value.replace(/\r\n?/g, '\n').trim();
+        if (!normalized) return [];
+        let paragraphs = normalized.split(/\n\s*\n+/).map((text) => text.replace(/\s*\n\s*/g, ' ').trim()).filter(Boolean);
+        if (paragraphs.length === 1 && normalized.includes('\n')) {
+          paragraphs = normalized.split('\n').map((text) => text.trim()).filter(Boolean);
+        }
+
+        const firstTitleIndex = paragraphs.findIndex((text) => text.length <= 42 && titlePattern.test(text));
+        let firstContentSeen = false;
+        return paragraphs.map((text, index) => {
+          if (authorPattern.test(text)) return { role: 'author', text };
+          if (text.length <= 42 && titlePattern.test(text)) return { role: 'chapter-title', text };
+          if ((firstTitleIndex > 0 && index < firstTitleIndex) || (firstTitleIndex < 0 && !firstContentSeen)) {
+            firstContentSeen = true;
+            return { role: 'intro', text };
+          }
+          firstContentSeen = true;
+          return { role: 'body', text };
+        });
+      }
+
+      function semanticBlocksFromObject(payload) {
+        if (Array.isArray(payload.blocks)) {
+          return payload.blocks
+            .filter((item) => item && item.text)
+            .map((item) => ({ role: item.role || 'body', text: String(item.text), highlights: item.highlights || [] }));
+        }
+
+        const blocks = [];
+        if (payload.author) blocks.push({ role: 'author', text: String(payload.author).match(authorPattern) ? String(payload.author) : `作者：${payload.author}` });
+        const intros = Array.isArray(payload.intro) ? payload.intro : payload.intro ? [payload.intro] : [];
+        intros.forEach((text) => blocks.push({ role: 'intro', text: String(text) }));
+        (payload.sections || []).forEach((section) => {
+          let remainingHighlightSlots = 3;
+          if (section.title) blocks.push({ role: 'chapter-title', text: String(section.title) });
+          const paragraphs = section.paragraphs || section.body || [];
+          (Array.isArray(paragraphs) ? paragraphs : [paragraphs]).filter(Boolean).forEach((paragraph) => {
+            if (typeof paragraph === 'object') {
+              const requestedHighlights = Array.isArray(paragraph.highlights)
+                ? paragraph.highlights
+                : paragraph.highlights ? [paragraph.highlights] : [];
+              const highlights = requestedHighlights.slice(0, remainingHighlightSlots);
+              remainingHighlightSlots -= highlights.length;
+              blocks.push({ role: 'body', text: String(paragraph.text || ''), highlights });
+            } else {
+              blocks.push({ role: 'body', text: String(paragraph), highlights: [] });
+            }
+          });
+        });
+        return blocks;
+      }
+
+      function expandHighlightToCompleteSentence(sourceText, highlightText) {
+        const highlightIndex = sourceText.indexOf(highlightText);
+        if (highlightIndex < 0) return null;
+        const sentenceMarks = '。！？!?';
+        let start = highlightIndex;
+        for (let index = highlightIndex - 1; index >= 0; index -= 1) {
+          if (sentenceMarks.includes(sourceText[index]) || sourceText[index] === '\n') {
+            start = index + 1;
+            break;
+          }
+          start = 0;
+        }
+
+        let end = sourceText.length;
+        const highlightEnd = highlightIndex + highlightText.length;
+        for (let index = highlightEnd; index < sourceText.length; index += 1) {
+          if (!sentenceMarks.includes(sourceText[index])) continue;
+          end = index + 1;
+          while (end < sourceText.length && '”’"\'〉》』】'.includes(sourceText[end])) end += 1;
+          break;
+        }
+
+        const rawSentence = sourceText.slice(start, end);
+        const leadingWhitespace = rawSentence.match(/^\s*/)?.[0].length || 0;
+        const sentence = rawSentence.trim();
+        return sentence ? { text: sentence, index: start + leadingWhitespace } : null;
+      }
+
+      function applyParagraphHighlights(paragraph, highlights = []) {
+        const sourceText = paragraph.textContent;
+        const matches = highlights
+          .map((highlight) => ({
+            text: String(typeof highlight === 'string' ? highlight : highlight.text || '').trim(),
+            color: currentAccentColor,
+            role: 'emphasis'
+          }))
+          .filter((highlight) => highlight.text && sourceText.includes(highlight.text))
+          .map((highlight) => {
+            const sentenceMatch = expandHighlightToCompleteSentence(sourceText, highlight.text);
+            return sentenceMatch ? { ...highlight, ...sentenceMatch } : null;
+          })
+          .filter(Boolean)
+          .sort((a, b) => a.index - b.index);
+        if (!matches.length) return;
+
+        paragraph.textContent = '';
+        let cursor = 0;
+        matches.forEach((match) => {
+          if (match.index < cursor) return;
+          paragraph.appendChild(document.createTextNode(sourceText.slice(cursor, match.index)));
+          const strong = document.createElement('strong');
+          strong.dataset.wechatRole = match.role;
+          strong.setAttribute('style', emphasisStyle(selectedFontStack, match.color));
+          strong.textContent = match.text;
+          paragraph.appendChild(strong);
+          cursor = match.index + match.text.length;
+        });
+        paragraph.appendChild(document.createTextNode(sourceText.slice(cursor)));
+      }
+
+      function renderSemanticBlocks(blocks) {
+        if (!blocks.length) throw new Error('没有可填入的正文内容');
+        editor.innerHTML = '';
+        const counts = { author: 0, intro: 0, 'chapter-title': 0, body: 0 };
+
+        blocks.forEach(({ role, text, highlights }) => {
+          const normalizedRole = ['author', 'intro', 'chapter-title', 'body'].includes(role) ? role : 'body';
+          const paragraph = document.createElement('p');
+          paragraph.dataset.wechatRole = normalizedRole;
+          paragraph.textContent = text.trim();
+          if (normalizedRole === 'author') paragraph.setAttribute('style', authorStyle());
+          if (normalizedRole === 'intro') paragraph.setAttribute('style', introStyle());
+          if (normalizedRole === 'chapter-title') {
+            paragraph.dataset.titleOriginal = text.trim();
+            paragraph.dataset.titleBase = stripTitleNumber(text.trim()) || text.trim();
+            paragraph.setAttribute('style', titleStyle());
+          }
+          if (normalizedRole === 'body') paragraph.setAttribute('style', bodyStyle());
+          applyParagraphHighlights(paragraph, highlights);
+          editor.appendChild(paragraph);
+          counts[normalizedRole] += 1;
+        });
+
+        convertMarkdownEmphasis(editor);
+        editor.querySelectorAll('strong').forEach((element) => {
+          if (element.dataset.wechatRole === 'emphasis-blue') {
+            element.setAttribute('style', blueEmphasisStyle());
+          } else {
+            element.dataset.wechatRole = 'emphasis';
+            element.setAttribute('style', emphasisStyle());
+          }
+        });
+        applyTitleNumbering(currentTitleNumberStyle, false);
+        savedEditorRange = null;
+        lastToolbarTarget = null;
+        lastToolbarBlocks = [];
+        rememberOriginalArticle(true);
+        updateOutput();
+        renderChecks(null);
+        agentStatus.textContent = `已识别：作者 ${counts.author} · 导语 ${counts.intro} · 标题 ${counts['chapter-title']} · 正文 ${counts.body}`;
+        return counts;
+      }
+
+      function importAgentContent(payload) {
+        let blocks;
+        let repairedJson = false;
+        if (typeof payload === 'string') {
+          const trimmed = payload.trim();
+          if (!trimmed) throw new Error('请先粘贴文章内容');
+          const jsonCandidate = extractAgentJsonCandidate(trimmed);
+          const looksLikeJson = /^[{｛]/.test(jsonCandidate);
+          if (looksLikeJson) {
+            let parsedResult;
+            try {
+              parsedResult = parseAgentJsonPayload(jsonCandidate);
+            } catch {
+              throw new Error('返回内容像 JSON，但标点或引号仍无法识别，请让 Agent 重新返回标准 JSON');
+            }
+            if (!parsedResult.payload || typeof parsedResult.payload !== 'object' || Array.isArray(parsedResult.payload)) {
+              throw new Error('JSON 必须是包含 author、intro 和 sections 的对象');
+            }
+            repairedJson = parsedResult.repaired;
+            blocks = semanticBlocksFromObject(parsedResult.payload);
+            if (!blocks.length) throw new Error('JSON 已解析，但没有找到可用的 author、intro、sections 或 blocks');
+          } else {
+            blocks = semanticBlocksFromPlainText(trimmed);
+          }
+        } else {
+          blocks = semanticBlocksFromObject(payload || {});
+        }
+        const counts = renderSemanticBlocks(blocks);
+        if (repairedJson) agentStatus.textContent = `已自动修复中文/全角标点 · ${agentStatus.textContent}`;
+        return counts;
+      }
+
+      function restoreAgentPromptIfDamaged() {
+        const wasChanged = agentPromptEditor.value !== lastValidAgentPrompt;
+        agentPromptText = lastValidAgentPrompt;
+        agentPromptEditor.value = lastValidAgentPrompt;
+        return wasChanged;
+      }
+
+      async function copyAgentPrompt() {
+        restoreAgentPromptIfDamaged();
+        try {
+          await navigator.clipboard.writeText(agentPromptText);
+        } catch {
+          const fallback = document.createElement('textarea');
+          fallback.value = agentPromptText;
+          fallback.setAttribute('style', 'position:fixed;left:-10000px;top:0;');
+          document.body.appendChild(fallback);
+          fallback.select();
+          document.execCommand('copy');
+          fallback.remove();
+        }
+        agentPromptButton.classList.add('copied');
+        agentPromptButton.textContent = '已复制';
+        window.setTimeout(() => {
+          agentPromptButton.classList.remove('copied');
+          agentPromptButton.textContent = '复制';
+        }, 2200);
+      }
+
+      function currentThemeSnapshot(name = '') {
+        return {
+          id: `custom-${Date.now()}`,
+          name,
+          bodySize: currentBodySize,
+          titleSize: currentTitleSize,
+          indent: currentIndent,
+          titleNumberStyle: currentTitleNumberStyle,
+          fontKey: selectedFontKey,
+          themeColor: currentAccentColor
+        };
+      }
+
+      function readCustomThemes() {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(THEME_STORAGE_KEY) || '[]');
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
+      }
+
+      function writeCustomThemes(themes) {
+        localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(themes));
+      }
+
+      function applyTheme(theme) {
+        currentBodySize = Number(theme.bodySize) || 16;
+        currentTitleSize = Number(theme.titleSize) || 32;
+        currentIndent = [8, 16].includes(Number(theme.indent)) ? Number(theme.indent) : 8;
+        currentTitleNumberStyle = ['arabic', 'chinese', 'chinese-line', 'chinese-box', 'none'].includes(theme.titleNumberStyle) ? theme.titleNumberStyle : 'arabic';
+        selectedFontKey = FONT_STACKS[theme.fontKey] ? theme.fontKey : 'system';
+        selectedFontStack = FONT_STACKS[selectedFontKey];
+        setThemeColor(theme.themeColor || theme.accentColor || theme.titleColor || ORANGE);
+
+        currentBodySizeLabel.textContent = `${currentBodySize}`;
+        currentTitleSizeLabel.textContent = `${currentTitleSize}`;
+        currentIndentLabel.textContent = `${currentIndent}`;
+        formatAll();
+        themeStatus.textContent = `已应用主题并完成检查：${theme.name}`;
+      }
+
+      function readableThemeTextColor(color) {
+        const normalized = String(color || ORANGE).trim().replace('#', '');
+        const hex = normalized.length === 3
+          ? normalized.split('').map((part) => part + part).join('')
+          : normalized.padEnd(6, '0').slice(0, 6);
+        const channels = [0, 2, 4].map((offset) => Number.parseInt(hex.slice(offset, offset + 2), 16) || 0);
+        const luminance = channels.reduce((sum, channel, index) => sum + channel * [0.299, 0.587, 0.114][index], 0);
+        return luminance > 158 ? '#28231f' : '#ffffff';
+      }
+
+      function renderThemeControls() {
+        themePresets.innerHTML = '';
+        BUILTIN_THEMES.forEach((theme) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'theme-chip';
+          button.style.setProperty('--theme-color', theme.themeColor);
+          button.textContent = theme.name;
+          button.addEventListener('click', () => applyTheme(theme));
+          themePresets.appendChild(button);
+        });
+
+        customThemeList.innerHTML = '';
+        readCustomThemes().forEach((theme) => {
+          const row = document.createElement('div');
+          row.className = 'custom-theme-row';
+          row.style.setProperty('--theme-color', theme.themeColor || ORANGE);
+          row.style.setProperty('--theme-ink', readableThemeTextColor(theme.themeColor || ORANGE));
+          const applyButton = document.createElement('button');
+          applyButton.type = 'button';
+          applyButton.className = 'saved-theme-apply';
+          applyButton.textContent = theme.name;
+          applyButton.setAttribute('aria-label', `应用主题 ${theme.name}`);
+          applyButton.addEventListener('click', () => applyTheme(theme));
+          const editButton = document.createElement('button');
+          editButton.type = 'button';
+          editButton.className = 'theme-overlay-action theme-edit';
+          editButton.setAttribute('aria-label', `修改主题 ${theme.name}`);
+          editButton.title = '修改主题';
+          editButton.textContent = '✎';
+          editButton.addEventListener('click', () => {
+            applyTheme(theme);
+            editingThemeId = theme.id;
+            themeNameInput.value = theme.name;
+            saveThemeButton.textContent = '更新';
+            themeStatus.textContent = `正在编辑：${theme.name}`;
+          });
+          const deleteButton = document.createElement('button');
+          deleteButton.type = 'button';
+          deleteButton.className = 'theme-overlay-action theme-delete';
+          deleteButton.setAttribute('aria-label', `删除主题 ${theme.name}`);
+          deleteButton.title = '删除主题';
+          deleteButton.textContent = '×';
+          deleteButton.addEventListener('click', () => {
+            writeCustomThemes(readCustomThemes().filter((item) => item.id !== theme.id));
+            if (editingThemeId === theme.id) {
+              editingThemeId = null;
+              themeNameInput.value = '';
+              saveThemeButton.textContent = '保存当前';
+            }
+            renderThemeControls();
+            themeStatus.textContent = `已删除主题：${theme.name}`;
+          });
+          row.append(applyButton, deleteButton, editButton);
+          customThemeList.appendChild(row);
+        });
+      }
+
+      function saveCurrentTheme() {
+        const name = themeNameInput.value.trim();
+        if (!name) {
+          themeStatus.textContent = '请先填写主题名称';
+          return;
+        }
+        const themes = readCustomThemes();
+        const existingIndex = editingThemeId
+          ? themes.findIndex((theme) => theme.id === editingThemeId)
+          : themes.findIndex((theme) => theme.name === name);
+        const snapshot = currentThemeSnapshot(name);
+        if (existingIndex >= 0) themes.splice(existingIndex, 1, { ...snapshot, id: themes[existingIndex].id });
+        else themes.push(snapshot);
+        writeCustomThemes(themes);
+        editingThemeId = null;
+        themeNameInput.value = '';
+        saveThemeButton.textContent = '保存当前';
+        renderThemeControls();
+        themeStatus.textContent = `主题“${name}”已保存`;
+      }
+
+      function mode(values) {
+        const counts = new Map();
+        values.filter((value) => value !== undefined && value !== null && value !== '').forEach((value) => counts.set(value, (counts.get(value) || 0) + 1));
+        return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+      }
+
+      function nearest(value, choices) {
+        return choices.reduce((best, choice) => Math.abs(choice - value) < Math.abs(best - value) ? choice : best, choices[0]);
+      }
+
+      function rgbToHex(value) {
+        const parts = value.match(/\d+/g)?.slice(0, 3).map(Number);
+        if (!parts || parts.length < 3) return value;
+        return `#${parts.map((part) => part.toString(16).padStart(2, '0')).join('')}`;
+      }
+
+      function inferFontKey(fontFamily) {
+        const value = (fontFamily || '').toLowerCase();
+        if (value.includes('kaiti') || value.includes('kaiti') || value.includes('楷')) return 'kaiti';
+        if (value.includes('song') || value.includes('simsun') || value.includes('serif')) return 'songti';
+        if (value.includes('pingfang') || value.includes('yahei') || value.includes('sans')) return 'heiti';
+        return 'system';
+      }
+
+      function learnPastedStyle() {
+        const text = styleSample.innerText.trim();
+        if (!text) {
+          learnStyleStatus.textContent = '请先粘贴一篇带格式的公众号文章';
+          return;
+        }
+        if (!styleSample.querySelector('[style], font, h1, h2, h3, h4, strong, b')) {
+          learnStyleStatus.textContent = '未检测到富文本格式，请从公众号编辑器中直接复制后粘贴';
+          return;
+        }
+
+        let blocks = [...styleSample.querySelectorAll('p, h1, h2, h3, h4')].filter((element) => element.innerText.trim());
+        if (!blocks.length) {
+          blocks = [...styleSample.querySelectorAll('div, section')].filter((element) => element.innerText.trim() && !element.querySelector('div, section, p'));
+        }
+        const metrics = blocks.map((element) => {
+          const style = getComputedStyle(element);
+          return {
+            element,
+            text: element.innerText.trim(),
+            size: pxValue(style.fontSize),
+            lineHeight: pxValue(style.lineHeight),
+            marginBottom: pxValue(style.marginBottom),
+            marginLeft: pxValue(style.marginLeft),
+            marginRight: pxValue(style.marginRight),
+            weight: Number(style.fontWeight) || 400,
+            color: rgbToHex(style.color),
+            fontFamily: style.fontFamily
+          };
+        });
+        const titleMetrics = metrics.filter((item) => item.size >= 20 && item.text.length <= 60);
+        const bodyMetrics = metrics.filter((item) => item.size >= 12 && item.size < 20 && item.text.length >= 12);
+        const bodySizeRaw = Number(mode(bodyMetrics.map((item) => Math.round(item.size)))) || 16;
+        const titleSizeRaw = Number(mode(titleMetrics.map((item) => Math.round(item.size)))) || 32;
+        const bilateralIndentRaw = Number(mode(bodyMetrics.map((item) => Math.round((item.marginLeft + item.marginRight) / 2)))) || 8;
+        const bodyFont = mode(bodyMetrics.map((item) => item.fontFamily)) || FONT_STACKS.system;
+        const titleColor = mode(titleMetrics.map((item) => item.color)) || ORANGE;
+        const emphasisColors = [...styleSample.querySelectorAll('strong, b, [style*="color"]')]
+          .map((element) => ({ color: rgbToHex(getComputedStyle(element).color), weight: Number(getComputedStyle(element).fontWeight) || 400 }))
+          .filter((item) => item.weight >= 600 && item.color !== titleColor)
+          .map((item) => item.color);
+
+        const learnedTheme = {
+          id: 'learned',
+          name: '剪贴板样稿',
+          bodySize: nearest(bodySizeRaw, [14, 15, 16]),
+          titleSize: nearest(titleSizeRaw, [24, 32]),
+          indent: nearest(bilateralIndentRaw, [8, 16]),
+          titleNumberStyle: currentTitleNumberStyle,
+          fontKey: inferFontKey(bodyFont),
+          themeColor: mode(emphasisColors) || titleColor || ORANGE
+        };
+        applyTheme(learnedTheme);
+
+        const averageLineHeight = mode(bodyMetrics.map((item) => item.size ? (item.lineHeight / item.size).toFixed(2) : '')) || '1.80';
+        const paragraphGap = mode(bodyMetrics.map((item) => Math.round(item.marginBottom))) || 24;
+        agentPromptText = `${AGENT_PROMPT}\n\n${AGENT_PROMPT_SENTENCE_RULE}\n\n从参考公众号样稿学习到的版式：正文约 ${bodySizeRaw}px，行高约 ${averageLineHeight}，段距约 ${paragraphGap}px，两端缩进约 ${learnedTheme.indent}px；章节标题约 ${titleSizeRaw}px；主题色 ${learnedTheme.themeColor}。请按这些视觉层级判断版序，但仍只返回上述 JSON，不要返回 HTML。`;
+        lastValidAgentPrompt = agentPromptText;
+        agentPromptEditor.value = agentPromptText;
+        learnStyleStatus.textContent = `正文 ${bodySizeRaw}px · 标题 ${titleSizeRaw}px · 缩进 ${learnedTheme.indent}px`;
+      }
+
+      function isPublicWechatArticleUrl(value) {
+        try {
+          const url = new URL(value);
+          return url.protocol === 'https:' && url.hostname === 'mp.weixin.qq.com';
+        } catch {
+          return false;
+        }
+      }
+
+      async function learnStyleFromWechatLink(sourceUrl) {
+        if (!isPublicWechatArticleUrl(sourceUrl)) {
+          learnStyleStatus.textContent = '请粘贴公开的公众号文章链接';
+          return;
+        }
+
+        learnStyleButton.disabled = true;
+        learnStyleButton.textContent = '读取中';
+        learnStyleStatus.textContent = '正在读取公开文章版式……';
+        try {
+          const response = await fetch('http://127.0.0.1:4318/api/learn-wechat-style', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: sourceUrl })
+          });
+          const payload = await response.json().catch(() => ({}));
+          if (!response.ok || !payload.html) throw new Error(payload.error || '没有读取到文章正文');
+          styleSample.innerHTML = payload.html;
+          learnPastedStyle();
+          const summary = learnStyleStatus.textContent;
+          learnStyleStatus.textContent = `${payload.title ? `《${payload.title}》` : '公开文章'} · ${summary}`;
+        } catch (error) {
+          const helperHint = error instanceof TypeError
+            ? '未连接本机链接读取助手；可启动端侧助手，或复制带格式全文后粘贴到这里'
+            : error.message;
+          learnStyleStatus.textContent = helperHint;
+        } finally {
+          learnStyleButton.disabled = false;
+          learnStyleButton.textContent = '应用';
+        }
+      }
+
+      function learnCurrentStyleSource() {
+        const sourceText = styleSample.innerText.trim();
+        const isSingleWechatLink = sourceText && !/\s/.test(sourceText) && isPublicWechatArticleUrl(sourceText);
+        if (isSingleWechatLink) return learnStyleFromWechatLink(sourceText);
+        learnPastedStyle();
+      }
+
+      window.WeChatWorkbench = {
+        importArticle: importAgentContent,
+        schema: { author: 'string', intro: 'string[]', sections: '{ title, paragraphs[] }[]' },
+        prompt: () => agentPromptText
+      };
+
+      function sanitizeAnnotationText(value) {
+        return value
+          .replace(/\r\n?/g, '\n')
+          .replace(/\u00a0/g, ' ')
+          .replace(/[\u200b\u200c\u200d\ufeff]/g, '')
+          .replace(/[ \t]+\n/g, '\n')
+          .replace(/\n[ \t]*\n+/g, '\n')
+          .trim();
+      }
+
+      function buildAnnotationBox(value) {
+        const plainText = sanitizeAnnotationText(value);
+        const box = document.createElement('section');
+        box.dataset.wechatComponent = 'scrolling-annotation';
+        box.setAttribute(
+          'style',
+          'height:84px;max-height:84px;overflow-y:auto;-webkit-overflow-scrolling:touch;' +
+          'margin:24px 0;padding:10px 12px;border:1px solid #e5e5e5;border-radius:6px;' +
+          'box-sizing:border-box;background:#f7f7f7;color:#777777;font-size:12px;' +
+          'line-height:1;letter-spacing:0;text-align:left;word-break:break-word;'
+        );
+
+        const paragraph = document.createElement('p');
+        paragraph.setAttribute('style', 'margin:0;padding:0;font-size:12px;line-height:1;letter-spacing:0;color:#777777;');
+        if (plainText) {
+          plainText.split('\n').forEach((line, index, lines) => {
+            paragraph.appendChild(document.createTextNode(line));
+            if (index < lines.length - 1) paragraph.appendChild(document.createElement('br'));
+          });
+        } else {
+          paragraph.innerHTML = '&#8203;';
+        }
+        box.appendChild(paragraph);
+        return { box, plainText };
+      }
+
+      async function copyAnnotationBox() {
+        const { box: annotationBox, plainText } = buildAnnotationBox(annotationInput.value);
+        const richHtml = annotationBox.outerHTML;
+        let copied = false;
+
+        if (navigator.clipboard?.write && window.ClipboardItem) {
+          try {
+            await navigator.clipboard.write([
+              new ClipboardItem({
+                'text/html': new Blob([richHtml], { type: 'text/html' }),
+                'text/plain': new Blob([plainText || '\u200b'], { type: 'text/plain' })
+              })
+            ]);
+            copied = true;
+          } catch {
+            copied = false;
+          }
+        }
+
+        if (!copied) {
+        const clipboardStage = document.createElement('div');
+        clipboardStage.setAttribute(
+          'style',
+          'position:fixed;left:-10000px;top:0;width:620px;background:#ffffff;pointer-events:none;'
+        );
+        clipboardStage.appendChild(annotationBox);
+        document.body.appendChild(clipboardStage);
+
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(clipboardStage);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        copied = document.execCommand('copy');
+        selection.removeAllRanges();
+        clipboardStage.remove();
+        }
+
+        annotationCopyButton.textContent = copied ? '已复制滚动框' : '复制失败，请重试';
+        annotationCopyStatus.textContent = copied ? '原格式已清除，可粘贴到微信测试' : '';
+        window.setTimeout(() => {
+          annotationCopyButton.textContent = '复制滚动框';
+          annotationCopyStatus.textContent = '';
+        }, 2600);
+      }
+
+      document.getElementById('format-all').addEventListener('click', formatAll);
+      document.getElementById('validate').addEventListener('click', validateFormat);
+      document.getElementById('reset-sample').addEventListener('click', restoreOriginalArticle);
+      copyButton.addEventListener('click', () => copyRichText(copyButton));
+      annotationCopyButton.addEventListener('click', copyAnnotationBox);
+      agentImportButton.addEventListener('click', () => {
+        try {
+          importAgentContent(agentInput.value);
+        } catch (error) {
+          agentStatus.textContent = error.message;
+        }
+      });
+      agentPromptButton.addEventListener('click', copyAgentPrompt);
+      agentPromptEditor.addEventListener('input', () => {
+        agentPromptText = agentPromptEditor.value;
+      });
+      agentPromptEditor.addEventListener('blur', restoreAgentPromptIfDamaged);
+      document.addEventListener('pointerdown', (event) => {
+        if (event.target !== agentPromptEditor) restoreAgentPromptIfDamaged();
+      }, true);
+      learnStyleButton.addEventListener('click', learnCurrentStyleSource);
+      saveThemeButton.addEventListener('click', saveCurrentTheme);
+      appearanceToggle.addEventListener('click', cycleAppearance);
+      mobilePreviewToggle.addEventListener('mouseenter', openMobilePublishPreview);
+      mobilePreviewToggle.addEventListener('mouseleave', scheduleMobilePublishPreviewClose);
+      mobilePreviewToggle.addEventListener('focus', openMobilePublishPreview);
+      mobilePreviewToggle.addEventListener('blur', scheduleMobilePublishPreviewClose);
+      mobilePreviewToggle.addEventListener('click', () => {
+        window.location.href = 'mobile.html';
+      });
+      mobilePublishPreview.addEventListener('mouseenter', () => window.clearTimeout(mobilePreviewCloseTimer));
+      mobilePublishPreview.addEventListener('mouseleave', scheduleMobilePublishPreviewClose);
+      mobilePublishPreview.addEventListener('focusin', () => window.clearTimeout(mobilePreviewCloseTimer));
+      mobilePublishPreview.addEventListener('focusout', scheduleMobilePublishPreviewClose);
+      mobilePreviewCloseButton.addEventListener('click', closeMobilePublishPreview);
+      searchToggle.addEventListener('click', toggleDocumentSearch);
+      documentSearchInput.addEventListener('input', () => updateDocumentSearch(true));
+      searchPreviousButton.addEventListener('click', () => moveDocumentSearch(-1));
+      searchNextButton.addEventListener('click', () => moveDocumentSearch(1));
+      searchCloseButton.addEventListener('click', closeDocumentSearch);
+      documentSearchInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          closeDocumentSearch();
+          searchToggle.focus();
+        } else if (event.key === 'Enter') {
+          event.preventDefault();
+          moveDocumentSearch(event.shiftKey ? -1 : 1);
+        }
+      });
+      annotationInput.addEventListener('paste', (event) => {
+        event.preventDefault();
+        const plainText = sanitizeAnnotationText(event.clipboardData.getData('text/plain'));
+        annotationInput.setRangeText(
+          plainText,
+          annotationInput.selectionStart,
+          annotationInput.selectionEnd,
+          'end'
+        );
+      });
+      editor.addEventListener('input', () => {
+        detectTopAuthorLine();
+        syncThemeEmphasis();
+        updateOutput();
+        scheduleValidation();
+      });
+      editor.addEventListener('paste', () => {
+        window.setTimeout(() => {
+          detectTopAuthorLine();
+          rememberOriginalArticle(false);
+        }, 0);
+      });
+      editor.addEventListener('keydown', (event) => {
+        if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'z') return;
+        event.preventDefault();
+        if (event.shiftKey) redoEditorChange();
+        else undoEditorChange();
+      });
+      editor.addEventListener('mousedown', () => {
+        savedEditorRange = null;
+        lastToolbarTarget = null;
+        lastToolbarBlocks = [];
+      });
+      document.addEventListener('selectionchange', rememberEditorSelection);
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !mobilePublishPreview.hidden) closeMobilePublishPreview();
+      });
+      document.addEventListener('pointerdown', (event) => {
+        document.querySelectorAll('.tool-menu[open]').forEach((menu) => {
+          if (!menu.contains(event.target)) menu.removeAttribute('open');
+        });
+        if (!documentSearch.hidden && !documentSearch.contains(event.target) && !searchToggle.contains(event.target)) {
+          closeDocumentSearch();
+        }
+      });
+
+      document.querySelectorAll('.tool-menu summary').forEach((summary) => {
+        summary.addEventListener('mousedown', (event) => {
+          rememberEditorSelection();
+          event.preventDefault();
+        });
+      });
+
+      document.querySelectorAll('[data-body-size]').forEach((button) => {
+        button.addEventListener('mousedown', (event) => event.preventDefault());
+        button.addEventListener('click', () => {
+          restoreEditorSelection();
+          applyBlockRole('body', button.dataset.bodySize);
+          document.getElementById('body-size-menu').removeAttribute('open');
+        });
+      });
+
+      document.querySelectorAll('[data-title-size]').forEach((button) => {
+        button.addEventListener('mousedown', (event) => event.preventDefault());
+        button.addEventListener('click', () => {
+          restoreEditorSelection();
+          applyBlockRole('heading', button.dataset.titleSize);
+          document.getElementById('title-size-menu').removeAttribute('open');
+        });
+      });
+
+      document.querySelectorAll('[data-title-number]').forEach((button) => {
+        button.addEventListener('mousedown', (event) => event.preventDefault());
+        button.addEventListener('click', () => {
+          applyTitleNumbering(button.dataset.titleNumber);
+          document.getElementById('title-number-menu').removeAttribute('open');
+        });
+      });
+
+      document.querySelectorAll('[data-theme-color]').forEach((button) => {
+        button.addEventListener('mousedown', (event) => event.preventDefault());
+        button.addEventListener('click', () => {
+          applyTextColor(button.dataset.themeColor);
+          document.getElementById('color-palette-menu').removeAttribute('open');
+        });
+      });
+
+      document.querySelectorAll('[data-font-key]').forEach((button) => {
+        button.addEventListener('mousedown', (event) => event.preventDefault());
+        button.addEventListener('click', () => {
+          restoreEditorSelection();
+          applySelectedFont(button.dataset.fontKey);
+          document.getElementById('font-family-menu').removeAttribute('open');
+        });
+      });
+
+      document.querySelectorAll('[data-paragraph-indent]').forEach((button) => {
+        button.addEventListener('mousedown', (event) => event.preventDefault());
+        button.addEventListener('click', () => {
+          applyParagraphIndent(button.dataset.paragraphIndent);
+          document.getElementById('paragraph-indent-menu').removeAttribute('open');
+        });
+      });
+
+      document.querySelectorAll('[data-command]').forEach((button) => {
+        button.addEventListener('mousedown', (event) => {
+          rememberEditorSelection();
+          event.preventDefault();
+        });
+        button.addEventListener('click', () => {
+          const command = button.dataset.command;
+          restoreEditorSelection();
+          if (command === 'clear') clearFormatting();
+          if (command === 'quote') applyQuote();
+          if (command === 'bold') applyThemeBold();
+          if (command === 'italic') document.execCommand('italic', false, null);
+          if (command === 'align-left') document.execCommand('justifyLeft', false, null);
+          if (command === 'align-center') document.execCommand('justifyCenter', false, null);
+          if (command === 'align-right') document.execCommand('justifyRight', false, null);
+          if (command === 'undo') undoEditorChange();
+          if (command === 'redo') redoEditorChange();
+          updateOutput();
+        });
+      });
+
+      document.querySelectorAll('[data-mobile-action]').forEach((button) => {
+        button.addEventListener('click', () => {
+          if (button.dataset.mobileAction === 'format') formatAll();
+          if (button.dataset.mobileAction === 'validate') validateFormat();
+          if (button.dataset.mobileAction === 'copy') copyRichText(button);
+        });
+      });
+
+      const editorObserver = new MutationObserver((mutations) => {
+        const hasContentChange = mutations.some((mutation) => !(
+          mutation.type === 'attributes' && mutation.attributeName === 'data-format-warning'
+        ));
+        if (!hasContentChange) return;
+        scheduleValidation();
+        scheduleEditorHistory();
+        if (!documentSearch.hidden) window.requestAnimationFrame(() => updateDocumentSearch(false));
+        if (!mobilePublishPreview.hidden) window.requestAnimationFrame(refreshMobilePublishPreview);
+      });
+      editorObserver.observe(editor, { subtree: true, childList: true, characterData: true, attributes: true });
+
+      applyAppearance(initialAppearance());
+      setThemeColor(DEFAULT_THEME_COLOR);
+      installEditorResizer();
+      renderThemeControls();
+      restoreSample();
+    })();
+  </script>
+</body>
+</html>
