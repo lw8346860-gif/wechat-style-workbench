@@ -991,24 +991,35 @@
       margin: 0 auto;
       position: relative;
     }
-    .sample-guide-label {
-      position: absolute;
-      top: 14px;
-      left: 18px;
-      z-index: 5;
-      padding: 3px 7px;
+    .sample-guide-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin: -34px 0 32px;
+      padding: 10px 12px;
       border: 1px solid var(--line);
       border: 1px solid color-mix(in srgb, var(--orange) 26%, transparent);
-      border-radius: 999px;
+      border-radius: 10px;
       background: var(--article-paper);
       background: color-mix(in srgb, var(--orange) 9%, var(--article-paper));
+      color: var(--article-ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      line-height: 1.45;
+    }
+    .sample-guide-copy { min-width: 0; }
+    .sample-guide-copy strong { display: block; color: var(--orange); font-size: 11px; }
+    .sample-guide-copy span { display: block; margin-top: 2px; color: var(--article-secondary); font-size: 10px; }
+    .sample-guide-card button {
+      flex: 0 0 auto;
+      min-height: 28px;
+      padding: 4px 9px;
+      border-color: color-mix(in srgb, var(--orange) 34%, var(--line));
+      background: var(--article-paper);
       color: var(--orange);
       font-size: 10px;
       font-weight: 700;
-      line-height: 1.35;
-      pointer-events: none;
     }
-    .sample-guide-label[hidden] { display: none; }
     .editor-resize-handle {
       position: absolute;
       top: 0;
@@ -1374,7 +1385,8 @@
       .editor-wrap { display: block; min-height: 70vh; padding: 0; background: var(--article-paper); }
       .editor-resize-shell { display: block; width: 100% !important; min-width: 0; max-width: none; height: auto; }
       .editor-resize-handle { display: none; }
-      .sample-guide-label { top: 8px; left: 12px; }
+      .sample-guide-card { margin: -20px 0 25px; padding: 9px 10px; }
+      .sample-guide-copy span { max-width: 235px; }
       .editor-page {
         width: 100%;
         min-width: 0;
@@ -1594,7 +1606,6 @@
 
         <div class="editor-wrap">
           <div id="editor-resize-shell" class="editor-resize-shell">
-            <span id="sample-guide-label" class="sample-guide-label" hidden>范文（可删除）</span>
             <div class="editor-resize-handle left" data-resize-edge="left" role="separator" aria-orientation="vertical" aria-label="拖动调整编辑区宽度" tabindex="0"></div>
             <section id="editor" class="editor-page" contenteditable="true" spellcheck="true" aria-label="微信公众号文章编辑区"></section>
             <div class="editor-resize-handle right" data-resize-edge="right" role="separator" aria-orientation="vertical" aria-label="拖动调整编辑区宽度" tabindex="0"></div>
@@ -1645,28 +1656,30 @@
     </section>
   </main>
 
+  <template id="sample-guide-template">
+    <aside class="sample-guide-card" data-guidance-marker="sample" contenteditable="false" role="note" aria-label="示例文章使用提示">
+      <div class="sample-guide-copy">
+        <strong>示例文章 · 新手指引</strong>
+        <span>可直接修改、全选后粘贴新文章，或清空后开始。</span>
+      </div>
+      <button type="button" data-clear-guidance-sample>清空开始</button>
+    </aside>
+  </template>
+
   <template id="sample-template">
-    <p>作者：林川</p>
-    <p>当城市里的设备越来越聪明，真正稀缺的并不是传感器、算法或数据，而是把短期效率与长期生活连接起来的判断。技术可以让系统跑得更快，却不能自动回答人们希望抵达哪里。</p>
-    <p>这篇文章从交通、社区和公共服务三个场景出发，讨论一座城市如何在自动化浪潮中保留必要的耐心、冗余与人工选择。</p>
-    <h2>1. 快系统之外，还需要慢变量</h2>
-    <p>早高峰的信号灯可以根据车流实时变化，公交线路也能依据历史数据调整班次。对管理者而言，这些可量化的改进最容易被看见，因为每一分钟都可以被记录，每一次提速都可以写进报表。</p>
-    <p><strong>效率指标回答的是系统跑得多快，却不一定回答它是否把人送到了更好的生活里。</strong></p>
-    <p>真正影响城市韧性的，往往是维护周期、邻里信任、步行习惯和一线人员的经验。这些变量变化缓慢，很难在一张实时大屏上闪烁，却会在暴雨、停电或人口结构变化时决定系统能否继续工作。</p>
-    <p>第二章 当设备开始替人做决定</p>
-    <p>自动化最初通常以辅助工具出现：提醒工作人员、归纳信息、提供几个可选方案。随着模型能力提高，它会逐渐进入资源分配、风险识别和服务排序等环节，原本由人承担的判断被拆成一连串看似中性的参数。</p>
-    <p>参数并非天然客观。训练数据记录的是过去发生过什么，而不是未来应该发生什么；如果历史中存在被忽略的人群，自动化只会更稳定地重复这种忽略。</p>
-    <p data-wechat-role="quote" data-quote-previous-role="body"><strong data-wechat-role="emphasis"><em>“一个真正可靠的系统，不是从不出错，而是在出错时仍然允许人看见、理解并纠正它。”</em></strong></p>
-    <p>这句话来自一位长期参与公共系统改造的工程师。它提醒我们，解释入口、人工复核和申诉通道并不是自动化的附属成本，而是系统获得社会信任的必要结构。</p>
-    <p>三、把零散信息变成可复用的判断</p>
-    <p>很多机构拥有大量报告，却仍然在相似问题上反复从头讨论。原因不在信息不足，而在经验没有被整理成可检索、可追溯、可更新的判断链条。</p>
-    <p>一套有效的知识机制至少要保留三个层次：事实从哪里来，当时为什么得出这个结论，以及后来发生了什么变化。**只有结论而没有依据，知识库很快就会变成另一种形式的意见堆积。**</p>
-    <p>当新情况出现时，团队需要修改的是结论所依赖的条件，而不是把整篇旧文推倒重来。这样，经验才会随着时间积累，而不是随着人员流动不断清零。</p>
-    <p>第四部分 给系统留下人工出口</p>
-    <p>人工出口不是简单设置一个“联系客服”按钮。它意味着用户能够知道机器做出了什么判断、依据是什么、由谁负责复核，以及在多长时间内可以得到回应。</p>
-    <p><b>越是影响范围广、纠错成本高的决定，越不应该只留下一个不可解释的自动结果。</b></p>
-    <p>好的自动化会把重复劳动交给机器，把价值冲突和例外情况交还给人。它不追求消灭所有不确定性，而是让有限的人力集中在真正需要负责的地方。</p>
-    <p>城市如此，组织亦然。我们最终需要的并不是一个永远替人作答的系统，而是一套能帮助人更清楚地看见问题、保留选择并承担后果的工具。</p>
+    <p>作者：松壑</p>
+    <p>欢迎使用公众号操作台。你正在看到的是一篇可以随时修改或删除的示例文章，它会带你快速认识从原文到微信草稿的完整流程。</p>
+    <p>这篇新手指引同时展示了正文、章节标题、主题色重点句和引用等格式。当你开始编辑或点击“清空开始”后，它不会再在以后刷新时出现。</p>
+    <h2>一、先让 Agent 识别文章结构</h2>
+    <p>把原文与操作台提供的提示词一起发给外部 Agent。Agent 会根据语义识别作者、导语、章节标题、正文和少量重点句，再返回可以直接填入的 JSON。</p>
+    <p><strong>结构识别的目的不是改写你的观点，而是让不同层级的内容获得稳定、统一的样式。</strong></p>
+    <h2>二、在编辑区完成最后微调</h2>
+    <p>内容填入后，可以框选文字调整正文、标题、字体、斜体、引用或对齐方式。没有框选内容时，字号、标题格式和序号会作为全文设置使用。</p>
+    <p data-wechat-role="quote" data-quote-previous-role="body"><strong data-wechat-role="emphasis"><em>“好排版不是堆叠装饰，而是让读者更快看懂文章结构。”</em></strong></p>
+    <p>选择新的主题色时，章节标题和加粗重点句会一起切换颜色。如果某种版式会反复使用，还可以保存成只存于当前设备的个人主题。</p>
+    <h2>三、检查后复制到微信</h2>
+    <p>完成排版后，先运行格式检查。操作台会以全文的多数格式为标准，定位少数字号、字体、颜色或段距偏差，帮助你在复制前完成最后核对。</p>
+    <p><strong>“复制富文本样稿”带走的是微信可识别的内联格式，新手提示、检查标记和界面控件都不会进入剪贴板。</strong></p>
   </template>
 
   <script>
@@ -1676,7 +1689,7 @@
       const BODY_COLOR = '#333333';
       const editor = document.getElementById('editor');
       const sampleTemplate = document.getElementById('sample-template');
-      const sampleGuideLabel = document.getElementById('sample-guide-label');
+      const sampleGuideTemplate = document.getElementById('sample-guide-template');
       const htmlOutput = document.getElementById('html-output');
       const checks = document.getElementById('checks');
       const status = document.getElementById('status');
@@ -2224,6 +2237,7 @@
         clone.removeAttribute('id');
         clone.removeAttribute('contenteditable');
         clone.removeAttribute('aria-label');
+        clone.querySelectorAll('[data-guidance-marker]').forEach((node) => node.remove());
         clone.querySelectorAll('[data-format-warning]').forEach((node) => node.removeAttribute('data-format-warning'));
         return clone;
       }
@@ -2321,7 +2335,7 @@
         if (!guidanceSampleActive) return;
         guidanceSampleActive = false;
         guidanceSampleBaselineHtml = '';
-        sampleGuideLabel.hidden = true;
+        editor.querySelectorAll('[data-guidance-marker]').forEach((node) => node.remove());
         try { localStorage.setItem(SAMPLE_DISMISSED_STORAGE_KEY, '1'); } catch {}
         if (!hasUserOriginal) originalArticleHtml = '';
       }
@@ -2336,7 +2350,6 @@
         hasUserOriginal = false;
         guidanceSampleActive = false;
         guidanceSampleBaselineHtml = '';
-        sampleGuideLabel.hidden = true;
         updateOutput();
         renderChecks(null);
         resetEditorHistory();
@@ -2357,7 +2370,13 @@
         hasUserOriginal = false;
         guidanceSampleActive = true;
         guidanceSampleBaselineHtml = originalArticleHtml;
-        sampleGuideLabel.hidden = false;
+        const guide = sampleGuideTemplate.content.firstElementChild.cloneNode(true);
+        guide.querySelector('[data-clear-guidance-sample]').addEventListener('click', () => {
+          dismissGuidanceSample();
+          initializeBlankEditor();
+          editor.focus();
+        });
+        editor.prepend(guide);
         updateOutput();
         renderChecks(null);
         resetEditorHistory();
@@ -2504,6 +2523,7 @@
       }
 
       function formatAll() {
+        dismissGuidanceSample();
         convertMarkdownEmphasis(editor);
         normalizeTopLevelBlocks();
 
@@ -2973,12 +2993,13 @@
 
       function validateFormat() {
         clearFormatWarnings();
-        const blocks = [...editor.children];
+        const blocks = [...editor.children].filter((block) => !block.hasAttribute('data-guidance-marker'));
         const titles = blocks.filter((block) => block.dataset.wechatRole === 'chapter-title');
         const bodies = blocks.filter((block) => block.dataset.wechatRole === 'body');
         const authors = blocks.filter((block) => block.dataset.wechatRole === 'author');
         const intros = blocks.filter((block) => block.dataset.wechatRole === 'intro');
-        const emphases = [...editor.querySelectorAll('strong, b, mark, [data-wechat-role="emphasis"], [data-wechat-role="emphasis-blue"], [data-wechat-role="emphasis-color"]')];
+        const emphases = [...editor.querySelectorAll('strong, b, mark, [data-wechat-role="emphasis"], [data-wechat-role="emphasis-blue"], [data-wechat-role="emphasis-color"]')]
+          .filter((node) => !node.closest('[data-guidance-marker]'));
         const emphasisSelector = 'strong, b, mark, [data-wechat-role="emphasis"], [data-wechat-role="emphasis-blue"], [data-wechat-role="emphasis-color"]';
         const titleNodes = collectTypographyNodes(titles);
         const bodyNodes = collectTypographyNodes(bodies, emphasisSelector);
