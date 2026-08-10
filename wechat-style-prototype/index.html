@@ -991,6 +991,24 @@
       margin: 0 auto;
       position: relative;
     }
+    .sample-guide-label {
+      position: absolute;
+      top: 14px;
+      left: 18px;
+      z-index: 5;
+      padding: 3px 7px;
+      border: 1px solid var(--line);
+      border: 1px solid color-mix(in srgb, var(--orange) 26%, transparent);
+      border-radius: 999px;
+      background: var(--article-paper);
+      background: color-mix(in srgb, var(--orange) 9%, var(--article-paper));
+      color: var(--orange);
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1.35;
+      pointer-events: none;
+    }
+    .sample-guide-label[hidden] { display: none; }
     .editor-resize-handle {
       position: absolute;
       top: 0;
@@ -1356,6 +1374,7 @@
       .editor-wrap { display: block; min-height: 70vh; padding: 0; background: var(--article-paper); }
       .editor-resize-shell { display: block; width: 100% !important; min-width: 0; max-width: none; height: auto; }
       .editor-resize-handle { display: none; }
+      .sample-guide-label { top: 8px; left: 12px; }
       .editor-page {
         width: 100%;
         min-width: 0;
@@ -1575,6 +1594,7 @@
 
         <div class="editor-wrap">
           <div id="editor-resize-shell" class="editor-resize-shell">
+            <span id="sample-guide-label" class="sample-guide-label" hidden>范文（可删除）</span>
             <div class="editor-resize-handle left" data-resize-edge="left" role="separator" aria-orientation="vertical" aria-label="拖动调整编辑区宽度" tabindex="0"></div>
             <section id="editor" class="editor-page" contenteditable="true" spellcheck="true" aria-label="微信公众号文章编辑区"></section>
             <div class="editor-resize-handle right" data-resize-edge="right" role="separator" aria-orientation="vertical" aria-label="拖动调整编辑区宽度" tabindex="0"></div>
@@ -1656,6 +1676,7 @@
       const BODY_COLOR = '#333333';
       const editor = document.getElementById('editor');
       const sampleTemplate = document.getElementById('sample-template');
+      const sampleGuideLabel = document.getElementById('sample-guide-label');
       const htmlOutput = document.getElementById('html-output');
       const checks = document.getElementById('checks');
       const status = document.getElementById('status');
@@ -1727,6 +1748,8 @@
       let historyTimer = null;
       let originalArticleHtml = '';
       let hasUserOriginal = false;
+      let guidanceSampleActive = false;
+      let guidanceSampleBaselineHtml = '';
       let documentSearchRanges = [];
       let documentSearchIndex = -1;
       let documentSearchUsesSelection = false;
@@ -1735,6 +1758,7 @@
       const THEME_STORAGE_KEY = 'wechat-workbench-custom-themes-v1';
       const APPEARANCE_STORAGE_KEY = 'wechat-workbench-appearance-v1';
       const EDITOR_WIDTH_STORAGE_KEY = 'wechat-workbench-editor-width-v1';
+      const SAMPLE_DISMISSED_STORAGE_KEY = 'wechat-workbench-guidance-sample-dismissed-v1';
       const FONT_LABELS = { system: '默认', heiti: '黑体', songti: '宋体', kaiti: '楷体' };
       const TITLE_NUMBER_LABELS = { arabic: '序', chinese: '序', 'chinese-line': '序', 'chinese-box': '序', none: '序' };
       const APPEARANCE_MODES = [
@@ -2288,7 +2312,41 @@
         resetEditorHistory();
       }
 
+      function guidanceSampleWasDismissed() {
+        try { return localStorage.getItem(SAMPLE_DISMISSED_STORAGE_KEY) === '1'; }
+        catch { return false; }
+      }
+
+      function dismissGuidanceSample() {
+        if (!guidanceSampleActive) return;
+        guidanceSampleActive = false;
+        guidanceSampleBaselineHtml = '';
+        sampleGuideLabel.hidden = true;
+        try { localStorage.setItem(SAMPLE_DISMISSED_STORAGE_KEY, '1'); } catch {}
+        if (!hasUserOriginal) originalArticleHtml = '';
+      }
+
+      function initializeBlankEditor() {
+        savedEditorRange = null;
+        lastToolbarTarget = null;
+        lastToolbarBlocks = [];
+        window.getSelection()?.removeAllRanges();
+        editor.innerHTML = '';
+        originalArticleHtml = '';
+        hasUserOriginal = false;
+        guidanceSampleActive = false;
+        guidanceSampleBaselineHtml = '';
+        sampleGuideLabel.hidden = true;
+        updateOutput();
+        renderChecks(null);
+        resetEditorHistory();
+      }
+
       function restoreSample() {
+        if (guidanceSampleWasDismissed()) {
+          initializeBlankEditor();
+          return;
+        }
         savedEditorRange = null;
         lastToolbarTarget = null;
         lastToolbarBlocks = [];
@@ -2297,6 +2355,9 @@
         formatAll();
         originalArticleHtml = sanitizedEditorHtml();
         hasUserOriginal = false;
+        guidanceSampleActive = true;
+        guidanceSampleBaselineHtml = originalArticleHtml;
+        sampleGuideLabel.hidden = false;
         updateOutput();
         renderChecks(null);
         resetEditorHistory();
@@ -3784,12 +3845,14 @@
         );
       });
       editor.addEventListener('input', () => {
+        dismissGuidanceSample();
         detectTopAuthorLine();
         syncThemeEmphasis();
         updateOutput();
         scheduleValidation();
       });
       editor.addEventListener('paste', () => {
+        dismissGuidanceSample();
         window.setTimeout(() => {
           detectTopAuthorLine();
           rememberOriginalArticle(false);
@@ -3911,6 +3974,7 @@
           mutation.type === 'attributes' && mutation.attributeName === 'data-format-warning'
         ));
         if (!hasContentChange) return;
+        if (guidanceSampleActive && sanitizedEditorHtml() !== guidanceSampleBaselineHtml) dismissGuidanceSample();
         scheduleValidation();
         scheduleEditorHistory();
         if (!documentSearch.hidden) window.requestAnimationFrame(() => updateDocumentSearch(false));

@@ -5,6 +5,7 @@
 - 桌面入口：`index.html`
 - 移动入口：`mobile.html`
 - 自定义主题仅保存在当前用户的浏览器本地存储中，不会上传到 GitHub。
+- 指导范文在当前浏览器首次使用时显示；编辑或删除后会记住该状态，以后刷新保持空白编辑器。
 
 GitHub Pages 使用 `.github/workflows/pages.yml` 自动发布。静态版支持排版、检查、Agent JSON 导入、剪贴板复制、本地主题和响应式移动端。
 
