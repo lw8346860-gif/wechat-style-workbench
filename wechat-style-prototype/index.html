@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script>
     const requestedPageView = new URLSearchParams(window.location.search).get('view');
+    const mobileBrowser = navigator.userAgentData?.mobile === true
+      || /Android|iPhone|iPod|Windows Phone|Mobile/i.test(navigator.userAgent)
+      || window.matchMedia('(max-width: 760px)').matches;
+    if (!requestedPageView && mobileBrowser) {
+      window.location.replace(new URL('mobile.html', window.location.href).href);
+    }
     if (requestedPageView === 'desktop') {
       document.querySelector('meta[name="viewport"]').setAttribute('content', 'width=1200');
       document.documentElement.dataset.pageView = 'desktop';
