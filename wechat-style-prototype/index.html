@@ -926,37 +926,6 @@
       background: currentColor;
       clip-path: polygon(18% 0, 82% 0, 100% 100%, 0 100%);
     }
-    .image-tool-glyph {
-      position: relative;
-      display: block;
-      width: 16px;
-      height: 13px;
-      overflow: hidden;
-      border: 1.5px solid currentColor;
-      border-radius: 3px;
-    }
-    .image-tool-glyph::before {
-      content: '';
-      position: absolute;
-      top: 2px;
-      right: 2px;
-      width: 3px;
-      height: 3px;
-      border-radius: 50%;
-      background: currentColor;
-    }
-    .image-tool-glyph::after {
-      content: '';
-      position: absolute;
-      left: 1px;
-      bottom: -1px;
-      width: 12px;
-      height: 8px;
-      background: currentColor;
-      clip-path: polygon(0 100%, 37% 38%, 57% 68%, 76% 26%, 100% 100%);
-    }
-    .image-menu .tool-menu-popover { display: grid; grid-template-columns: 1fr; }
-    .image-menu .tool-menu-popover button { min-width: 112px; text-align: left; }
     .history-button {
       display: inline-grid;
       place-items: center;
@@ -1649,13 +1618,6 @@
           <button class="icon-button quote-button" type="button" data-command="quote" aria-label="引用" data-tooltip="添加或取消引用格式">“</button>
           <button class="icon-button" type="button" data-command="bold" aria-label="主题色加粗" data-tooltip="添加或取消主题色粗体"><strong>B</strong></button>
           <button class="icon-button italic-button" type="button" data-command="italic" aria-label="斜体" data-tooltip="添加或取消斜体"><em>I</em></button>
-          <details class="tool-menu image-menu" id="image-menu">
-            <summary aria-label="图片操作" data-tooltip="粘贴图片或复制选中图片"><span class="image-tool-glyph" aria-hidden="true"></span></summary>
-            <div class="tool-menu-popover">
-              <button id="paste-image" type="button">粘贴剪贴板图片</button>
-              <button id="copy-selected-image" type="button">复制选中图片</button>
-            </div>
-          </details>
           <details class="tool-menu indent-menu" id="paragraph-indent-menu">
             <summary aria-label="两端缩进" data-tooltip="设置段落两端缩进"><span class="indent-glyph" aria-hidden="true"><span></span><span></span><span></span></span><span id="current-indent" class="visually-hidden">8</span></summary>
             <div class="tool-menu-popover">
@@ -1796,9 +1758,6 @@
       const searchNextButton = document.getElementById('search-next');
       const searchCloseButton = document.getElementById('search-close');
       const basicIdentifyButton = document.getElementById('basic-identify');
-      const imageMenu = document.getElementById('image-menu');
-      const pasteImageButton = document.getElementById('paste-image');
-      const copySelectedImageButton = document.getElementById('copy-selected-image');
       const mobilePreviewToggle = document.getElementById('mobile-preview-toggle');
       const mobilePublishPreview = document.getElementById('mobile-publish-preview');
       const publishPreviewScreen = document.getElementById('publish-preview-screen');
@@ -2513,6 +2472,7 @@
           image.setAttribute('style', imageElementStyle());
           image.setAttribute('draggable', 'false');
           if (!image.getAttribute('alt')) image.setAttribute('alt', '文章图片');
+          image.setAttribute('aria-label', '文章图片，按 Ctrl 或 Command + C 复制');
 
           let topLevel = image;
           while (topLevel.parentElement && topLevel.parentElement !== editor) topLevel = topLevel.parentElement;
@@ -2551,6 +2511,7 @@
         const image = document.createElement('img');
         image.src = source;
         image.alt = alt || '文章图片';
+        image.setAttribute('aria-label', '文章图片，按 Ctrl 或 Command + C 复制');
         image.setAttribute('style', imageElementStyle());
         image.setAttribute('draggable', 'false');
         paragraph.appendChild(image);
@@ -2579,18 +2540,9 @@
         });
       }
 
-      function temporaryImageButtonText(button, text, duration = 2200) {
-        const original = button.textContent;
-        button.textContent = text;
-        window.setTimeout(() => { button.textContent = original; }, duration);
-      }
-
-      async function insertImageFiles(files, feedbackButton = pasteImageButton) {
+      async function insertImageFiles(files) {
         const images = [...files].filter((file) => file?.type?.startsWith('image/'));
-        if (!images.length) {
-          temporaryImageButtonText(feedbackButton, '未找到图片');
-          return 0;
-        }
+        if (!images.length) return 0;
         dismissGuidanceSample();
         let anchor = currentImageInsertionAnchor();
         for (const [index, file] of images.entries()) {
@@ -2601,28 +2553,7 @@
         updateOutput();
         scheduleValidation();
         scheduleEditorHistory();
-        temporaryImageButtonText(feedbackButton, `已插入 ${images.length} 张`);
-        imageMenu.open = false;
         return images.length;
-      }
-
-      async function pasteImagesFromClipboard() {
-        if (!navigator.clipboard?.read) {
-          temporaryImageButtonText(pasteImageButton, '请在正文中直接粘贴');
-          return;
-        }
-        try {
-          const clipboardItems = await navigator.clipboard.read();
-          const blobs = [];
-          for (const item of clipboardItems) {
-            for (const type of item.types.filter((value) => value.startsWith('image/'))) {
-              blobs.push(await item.getType(type));
-            }
-          }
-          await insertImageFiles(blobs, pasteImageButton);
-        } catch {
-          temporaryImageButtonText(pasteImageButton, '请允许剪贴板权限');
-        }
       }
 
       function selectedEditorImage() {
@@ -2659,10 +2590,7 @@
 
       async function copySelectedImage() {
         const image = selectedEditorImage();
-        if (!image) {
-          temporaryImageButtonText(copySelectedImageButton, '请先点选图片');
-          return;
-        }
+        if (!image) return false;
         let copied = false;
         try {
           const sourceBlob = await (await fetch(image.src)).blob();
@@ -2673,8 +2601,11 @@
         } catch {
           copied = copyImageElementFallback(image);
         }
-        temporaryImageButtonText(copySelectedImageButton, copied ? '已复制图片' : '复制失败');
-        if (copied) imageMenu.open = false;
+        if (copied) {
+          image.setAttribute('aria-label', '图片已复制');
+          window.setTimeout(() => image.setAttribute('aria-label', '文章图片，按 Ctrl 或 Command + C 复制'), 1800);
+        }
+        return copied;
       }
 
       function isTitleBlock(block) {
@@ -4152,8 +4083,6 @@
 
       document.getElementById('format-all').addEventListener('click', formatAll);
       basicIdentifyButton.addEventListener('click', () => basicIdentifyStructure(basicIdentifyButton));
-      pasteImageButton.addEventListener('click', pasteImagesFromClipboard);
-      copySelectedImageButton.addEventListener('click', copySelectedImage);
       document.getElementById('validate').addEventListener('click', validateFormat);
       document.getElementById('reset-sample').addEventListener('click', restoreOriginalArticle);
       copyButton.addEventListener('click', () => copyRichText(copyButton));
@@ -4227,7 +4156,10 @@
           .filter(Boolean);
         if (imageFiles.length) {
           event.preventDefault();
-          insertImageFiles(imageFiles).catch(() => temporaryImageButtonText(pasteImageButton, '图片插入失败'));
+          insertImageFiles(imageFiles).catch(() => {
+            status.className = 'status warning';
+            status.innerHTML = '<span class="status-dot"></span><span>图片插入失败</span>';
+          });
           return;
         }
         dismissGuidanceSample();
@@ -4239,7 +4171,13 @@
         }, 0);
       });
       editor.addEventListener('keydown', (event) => {
-        if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'z') return;
+        if (!(event.metaKey || event.ctrlKey)) return;
+        if (event.key.toLowerCase() === 'c' && selectedEditorImage()) {
+          event.preventDefault();
+          copySelectedImage();
+          return;
+        }
+        if (event.key.toLowerCase() !== 'z') return;
         event.preventDefault();
         if (event.shiftKey) redoEditorChange();
         else undoEditorChange();
