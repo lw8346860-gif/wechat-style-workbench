@@ -1696,6 +1696,7 @@
   </template>
 
   <template id="sample-template">
+    <h1>公众号操作台新手指引</h1>
     <p>作者：松壑</p>
     <p>欢迎使用公众号操作台。你正在看到的是一篇可以随时修改或删除的示例文章，它会带你快速认识从原文到微信草稿的完整流程。</p>
     <p>这篇新手指引同时展示了正文、章节标题、主题色重点句和引用等格式。当你开始编辑或点击“清空开始”后，它不会再在以后刷新时出现。</p>
@@ -1815,7 +1816,7 @@
         { id: 'classic', name: '经典橘', bodySize: 16, titleSize: 32, indent: 8, fontKey: 'system', themeColor: '#ff6827' }
       ];
 
-      const AGENT_PROMPT = `你是公众号文章的版序识别与语义排版助手。\n\n原文会和本提示词一起发送给你。\n\n任务：理解全文，识别作者、真正存在的摘要或导语、章节标题、章节正文和少量真正重要的句子；不虚构信息、不改变事实，只修正明显的断句或粘贴错误。把结果填入下方 JSON，并将填好的 JSON 直接返回给用户。\n\n必须使用英文半角 JSON 结构标点（" : , { } [ ]），不得用中文弯引号包围键名或字符串。\n\n只返回可被 JSON.parse 解析的 JSON 对象，不要附加解释、Markdown、代码围栏或 HTML：\n{\n  "author": "作者姓名；没有则为空字符串",\n  "intro": ["仅填写原文明示或内容明确属于摘要、导语、编者按的自然段；没有则为空数组"],\n  "sections": [\n    {\n      "title": "一、章节标题",\n      "paragraphs": [\n        {\n          "text": "完整的章节正文自然段",\n          "highlights": ["正文中原样出现的完整核心判断句"]\n        }\n      ]\n    }\n  ]\n}\n\n结构规则：\n1. author 只写作者姓名。作者、来源、日期、文章标题和普通开场正文都不得放入 intro。\n2. intro 采用高门槛判断：只有原文明示为“摘要”“导语”“编者按”，或内容明确承担全文概括功能时才填写。仅仅位于第一章之前，不能作为 intro 的判断依据；拿不准时返回空数组，并把相应文字保留为正文。\n3. 不要把摘要、导语、作者信息、来源或普通正文判断成引用。引用只适用于原文中有明确发言者或来源、确实需要读者重视的他人原话；本 JSON 不自动套用引用格式，原话仍按正文保留，是否设为引用由用户手动决定。\n4. paragraphs 一项对应一个完整自然段。没有显式标题时，可根据语义生成克制、准确的小标题。\n5. 每个章节所有 paragraphs 中的 highlights 合计最多 3 句，通常选择 1—2 句；宁缺毋滥。highlights 必须在对应正文中逐字出现，操作台会统一加粗并使用当前主题色呈现。`;
+      const AGENT_PROMPT = `你是公众号文章的版序识别与语义排版助手。\n\n原文会和本提示词一起发送给你。\n\n任务：理解全文，识别全文标题、作者、真正存在的摘要或导语、章节标题、章节正文和少量真正重要的句子；不虚构信息、不改变事实，只修正明显的断句或粘贴错误。把结果填入下方 JSON，并将填好的 JSON 直接返回给用户。\n\n必须使用英文半角 JSON 结构标点（" : , { } [ ]），不得用中文弯引号包围键名或字符串。\n\n只返回可被 JSON.parse 解析的 JSON 对象，不要附加解释、Markdown、代码围栏或 HTML：\n{\n  "article_title": "全文标题；没有则为空字符串",\n  "author": "作者姓名；没有则为空字符串",\n  "intro": ["仅填写原文明示或内容明确属于摘要、导语、编者按的自然段；没有则为空数组"],\n  "sections": [\n    {\n      "title": "一、章节标题",\n      "paragraphs": [\n        {\n          "text": "完整的章节正文自然段",\n          "highlights": ["正文中原样出现的完整核心判断句"]\n        }\n      ]\n    }\n  ]\n}\n\n结构规则：\n1. article_title 只填写全文总标题，永远不要在其中添加章节序号。author 只写作者姓名。作者、来源、日期、文章标题和普通开场正文都不得放入 intro。\n2. intro 采用高门槛判断：只有原文明示为“摘要”“导语”“编者按”，或内容明确承担全文概括功能时才填写。仅仅位于第一章之前，不能作为 intro 的判断依据；拿不准时返回空数组，并把相应文字保留为正文。\n3. 不要把摘要、导语、作者信息、来源或普通正文判断成引用。引用只适用于原文中有明确发言者或来源、确实需要读者重视的他人原话；本 JSON 不自动套用引用格式，原话仍按正文保留，是否设为引用由用户手动决定。\n4. paragraphs 一项对应一个完整自然段。没有显式标题时，可根据语义生成克制、准确的小标题。\n5. 每个章节所有 paragraphs 中的 highlights 合计最多 3 句，通常选择 1—2 句；宁缺毋滥。highlights 必须在对应正文中逐字出现，操作台会统一加粗并使用当前主题色呈现。`;
       const AGENT_PROMPT_SENTENCE_RULE = `重点句补充规则：每项 highlight 必须是一个完整句子，从句首保留到句号、问号或叹号并包含句末标点；不得因为逗号、分号或冒号截成半句。每章最多 3 句。优先选择能概括章节核心判断、结论或关键转折的句子；尽量不要选择章节标题正上方的上一段末句或标题正下方第一句，除非该句确实是全章不可替代的最佳判断。`;
       let agentPromptText = `${AGENT_PROMPT}\n\n${AGENT_PROMPT_SENTENCE_RULE}`;
       let lastValidAgentPrompt = agentPromptText;
@@ -1824,6 +1825,7 @@
       const titlePattern = /^(?:第[一二三四五六七八九十百零\d]+(?:章|节|部分|篇)|[一二三四五六七八九十百零\d]+[\.．、])\s*\S+/;
       const authorPattern = /^(?:作者|撰文|文|来源|by)\s*[：:／/]\s*\S+/i;
       const basicAuthorPattern = /^(?:作者|撰文|执笔|文|by)\s*(?:[：:／/]\s*|\s+)\S+/i;
+      const articleMetadataPattern = /^(?:作者|撰文|执笔|文|来源|编辑|责任编辑|发布日期|发布时间|日期|时间|by)\s*(?:[：:／/]\s*|\s+)\S+/i;
       const basicNumberedTitlePattern = /^(?:第[一二三四五六七八九十百零\d]+(?:章|节|部分|篇|讲|单元)|[一二三四五六七八九十百零]+[、.．]|\d{1,3}[.．、](?:\s+|(?=[^\d%]))|[（(](?:[一二三四五六七八九十百零]+|\d{1,3})[）)])\s*\S*/;
       const standaloneTitleNumberPattern = /^(?:第[一二三四五六七八九十百零\d]+(?:章|节|部分|篇|讲|单元)|[（(](?:[一二三四五六七八九十百零]+|\d{1,3})[）)]|[一二三四五六七八九十百零]+|\d{1,3})[、.．]?$/;
 
@@ -2079,6 +2081,10 @@
         return `margin:48px ${indent}px 24px;font-size:${size}px;line-height:1.35;color:${color};font-weight:700;text-align:left;font-family:${fontFamily};`;
       }
 
+      function articleTitleStyle(fontFamily = selectedFontStack, size = currentTitleSize, indent = currentIndent) {
+        return `margin:0 ${indent}px 24px;font-size:${size}px;line-height:1.35;color:${BODY_COLOR};font-weight:700;text-align:left;font-family:${fontFamily};`;
+      }
+
       function emphasisStyle(fontFamily = selectedFontStack, color = currentAccentColor) {
         return `font-size:${currentBodySize}px;line-height:1.8;color:${color};font-weight:700;font-family:${fontFamily};`;
       }
@@ -2116,7 +2122,7 @@
 
       function syncThemeEmphasis() {
         editor.querySelectorAll('strong, b, mark, [data-wechat-role="emphasis"], [data-wechat-role="emphasis-blue"], [data-wechat-role="emphasis-color"], span[style*="font-weight"], font[style*="font-weight"]').forEach((element) => {
-          if (element.closest('[data-wechat-role="chapter-title"]')) return;
+          if (element.closest('[data-wechat-role="chapter-title"], [data-wechat-role="article-title"]')) return;
           const explicitEmphasis = element.matches('strong, b, mark, [data-wechat-role="emphasis"], [data-wechat-role="emphasis-blue"], [data-wechat-role="emphasis-color"]');
           if (!explicitEmphasis && Number(getComputedStyle(element).fontWeight) < 600) return;
           const keepItalic = getComputedStyle(element).fontStyle === 'italic';
@@ -2131,7 +2137,7 @@
         });
 
         editor.querySelectorAll('span[style*="color"], font[color]').forEach((element) => {
-          const themedParent = element.closest('[data-wechat-role="chapter-title"], strong, b, mark, [data-wechat-role="emphasis"]');
+          const themedParent = element.closest('[data-wechat-role="chapter-title"], [data-wechat-role="article-title"], strong, b, mark, [data-wechat-role="emphasis"]');
           if (!themedParent) {
             element.style.removeProperty('color');
             element.removeAttribute('color');
@@ -2165,6 +2171,10 @@
               if (child === numberPart) child.style.backgroundColor = 'transparent';
             }
           });
+        });
+
+        editor.querySelectorAll('[data-wechat-role="article-title"]').forEach((block) => {
+          block.setAttribute('style', articleTitleStyle(block.style.fontFamily || selectedFontStack));
         });
 
         syncThemeEmphasis();
@@ -2628,6 +2638,7 @@
       }
 
       function isTitleBlock(block) {
+        if (block.dataset.wechatRole === 'article-title') return false;
         const tagIsHeading = /^H[1-4]$/.test(block.tagName);
         const explicitRole = block.dataset.wechatRole === 'chapter-title';
         const text = block.textContent.trim();
@@ -2647,14 +2658,67 @@
         return /[A-Za-z\u3400-\u9fff]/.test(normalized);
       }
 
+      function isLikelyArticleTitle(text) {
+        const normalized = String(text || '').replace(/\s+/g, ' ').trim();
+        if (normalized.length < 2 || normalized.length > 50) return false;
+        if (articleMetadataPattern.test(normalized) || basicNumberedTitlePattern.test(normalized)) return false;
+        if (/^(?:摘要|导语|编者按|前言|正文)$/.test(normalized)) return false;
+        if (/[。；;]/.test(normalized)) return false;
+        if ((normalized.match(/[，,]/g) || []).length > 2) return false;
+        return /[A-Za-z\u3400-\u9fff]/.test(normalized);
+      }
+
+      function detectLeadingArticleTitle() {
+        const existing = [...editor.children].find((block) => block.dataset.wechatRole === 'article-title');
+        if (existing) {
+          existing.setAttribute('style', articleTitleStyle(existing.style.fontFamily || selectedFontStack));
+          return existing;
+        }
+
+        let candidate = null;
+        for (const block of [...editor.children]) {
+          if (block.hasAttribute('data-guidance-marker') || block.dataset.wechatRole === 'image' || block.querySelector('img')) continue;
+          const rawText = block.textContent.replace(/\s+/g, ' ').trim();
+          if (!rawText) continue;
+          if (articleMetadataPattern.test(rawText)) continue;
+
+          const rawOriginalText = block.dataset.titleOriginal?.trim() || rawText;
+          const originalLines = rawOriginalText.split(/\r?\n+/).map((line) => line.trim()).filter(Boolean);
+          const originalHasDetachedNumber = originalLines.length >= 2 && standaloneTitleNumberPattern.test(originalLines[0]);
+          const originalText = rawOriginalText.replace(/\s+/g, ' ').trim();
+          if (originalHasDetachedNumber || basicNumberedTitlePattern.test(originalText)) return null;
+          const candidateText = block.dataset.titleBase?.trim() || titleBaseFromBlock(block) || rawText;
+          if (!/^H[1-4]$/.test(block.tagName) && !isLikelyArticleTitle(candidateText)) return null;
+          candidate = block;
+          break;
+        }
+        if (!candidate) return null;
+
+        let articleTitle = candidate;
+        if (articleTitle.tagName !== 'P') {
+          const paragraph = document.createElement('p');
+          paragraph.append(...articleTitle.childNodes);
+          articleTitle.replaceWith(paragraph);
+          articleTitle = paragraph;
+        }
+        const titleText = articleTitle.dataset.titleBase?.trim() || titleBaseFromBlock(articleTitle) || articleTitle.textContent.trim();
+        articleTitle.replaceChildren(document.createTextNode(titleText));
+        articleTitle.dataset.wechatRole = 'article-title';
+        articleTitle.removeAttribute('data-title-original');
+        articleTitle.removeAttribute('data-title-base');
+        articleTitle.setAttribute('style', articleTitleStyle(articleTitle.style.fontFamily || selectedFontStack));
+        return articleTitle;
+      }
+
       function basicIdentifyStructure(feedbackButton = basicIdentifyButton) {
         dismissGuidanceSample();
         rememberOriginalArticle(false);
         convertMarkdownEmphasis(editor);
         normalizeTopLevelBlocks();
         removeDetachedTitleNumberBlocks();
+        detectLeadingArticleTitle();
 
-        const counts = { author: 0, title: 0, body: 0, image: 0 };
+        const counts = { articleTitle: 0, author: 0, title: 0, body: 0, image: 0 };
         [...editor.children].forEach((sourceBlock) => {
           if (sourceBlock.hasAttribute('data-guidance-marker')) return;
           let block = sourceBlock;
@@ -2669,6 +2733,12 @@
           block.removeAttribute('data-quote-previous-role');
           block.removeAttribute('data-title-original');
           block.removeAttribute('data-title-base');
+
+          if (block.dataset.wechatRole === 'article-title') {
+            block.setAttribute('style', articleTitleStyle(block.style.fontFamily || selectedFontStack));
+            counts.articleTitle += 1;
+            return;
+          }
 
           if (block.querySelector('img') && !text) {
             block.dataset.wechatRole = 'image';
@@ -2709,7 +2779,7 @@
         updateOutput();
         validateFormat();
         const originalTooltip = '识别作者、带序号或无标点短标题与正文';
-        const resultText = `已识别：作者 ${counts.author} · 标题 ${counts.title} · 正文 ${counts.body}`;
+        const resultText = `已识别：全文标题 ${counts.articleTitle} · 作者 ${counts.author} · 章节标题 ${counts.title} · 正文 ${counts.body}`;
         feedbackButton?.setAttribute('data-tooltip', resultText);
         const originalLabel = feedbackButton?.textContent;
         if (feedbackButton?.matches('[data-mobile-action]')) feedbackButton.textContent = `标题 ${counts.title}`;
@@ -2784,6 +2854,7 @@
 
       function ensureChapterTitleBlocks() {
         removeDetachedTitleNumberBlocks();
+        detectLeadingArticleTitle();
         const promoted = [];
         [...editor.children].forEach((sourceBlock) => {
           if (!isTitleBlock(sourceBlock)) return;
@@ -2864,6 +2935,7 @@
         convertMarkdownEmphasis(editor);
         normalizeTopLevelBlocks();
         removeDetachedTitleNumberBlocks();
+        detectLeadingArticleTitle();
 
         const sourceBlocks = [...editor.children];
         const firstTitleIndex = sourceBlocks.findIndex(isTitleBlock);
@@ -2873,6 +2945,8 @@
           if (sourceBlock.querySelector('img') && !text) {
             sourceBlock.dataset.wechatRole = 'image';
             sourceBlock.setAttribute('style', imageBlockStyle());
+          } else if (sourceBlock.dataset.wechatRole === 'article-title') {
+            sourceBlock.setAttribute('style', articleTitleStyle(sourceBlock.style.fontFamily || selectedFontStack));
           } else if (sourceBlock.dataset.wechatRole === 'quote') {
             sourceBlock.setAttribute('style', quoteStyle());
           } else if (isTitleBlock(sourceBlock)) {
@@ -3034,6 +3108,7 @@
             delete block.dataset.quotePreviousRole;
             block.dataset.wechatRole = previousRole;
             if (previousRole === 'chapter-title') block.setAttribute('style', titleStyle(fontFamily));
+            else if (previousRole === 'article-title') block.setAttribute('style', articleTitleStyle(fontFamily));
             else if (previousRole === 'intro') block.setAttribute('style', introStyle(fontFamily));
             else if (previousRole === 'author') block.setAttribute('style', authorStyle(fontFamily));
             else block.setAttribute('style', bodyStyle(fontFamily));
@@ -3338,6 +3413,7 @@
         clearFormatWarnings();
         const blocks = [...editor.children].filter((block) => !block.hasAttribute('data-guidance-marker'));
         const titles = blocks.filter((block) => block.dataset.wechatRole === 'chapter-title');
+        const articleTitles = blocks.filter((block) => block.dataset.wechatRole === 'article-title');
         const bodies = blocks.filter((block) => block.dataset.wechatRole === 'body');
         const authors = blocks.filter((block) => block.dataset.wechatRole === 'author');
         const intros = blocks.filter((block) => block.dataset.wechatRole === 'intro');
@@ -3376,7 +3452,7 @@
           { label: '正文颜色与粗细', detail: bodyAppearance.detail, pass: bodyAppearance.pass, nodes: bodyAppearance.errorNodes, reason: '正文颜色或粗细属于少数格式' },
           { label: '重点字字体与字号', detail: emphasisTypography.detail, pass: emphasisTypography.pass, nodes: [...emphasisTypography.sizeErrorNodes, ...emphasisTypography.fontErrorNodes], reason: '重点字体或字号属于少数格式' },
           { label: '重点字颜色与粗细', detail: emphasisAppearance.detail, pass: emphasisAppearance.pass, nodes: emphasisAppearance.errorNodes, reason: '重点颜色或粗细属于少数格式' },
-          { label: '语义识别', detail: `作者 ${authors.length} · 导语 ${intros.length}`, pass: true, nodes: [] },
+          { label: '语义识别', detail: `全文标题 ${articleTitles.length} · 作者 ${authors.length} · 导语 ${intros.length}`, pass: true, nodes: [] },
           { label: '两端缩进一致性', detail: `主流 ${dominantIndentLeft}px / ${dominantIndentRight}px · 偏差 ${indentErrors.length}`, pass: indentPass, nodes: indentErrors, reason: '两端缩进属于少数格式' },
           { label: '段落间距一致性', detail: `主流 ${dominantSpacing}px · 偏差 ${spacingErrors.length}`, pass: spacingPass, nodes: spacingErrors, reason: '段落间距属于少数格式' }
         ];
@@ -3588,11 +3664,14 @@
           paragraphs = normalized.split('\n').map((text) => text.trim()).filter(Boolean);
         }
 
-        const firstTitleIndex = paragraphs.findIndex((text) => text.length <= 42 && titlePattern.test(text));
+        const firstMeaningfulIndex = paragraphs.findIndex((text) => !articleMetadataPattern.test(text));
+        const articleTitleIndex = firstMeaningfulIndex >= 0 && isLikelyArticleTitle(paragraphs[firstMeaningfulIndex]) ? firstMeaningfulIndex : -1;
+        const firstTitleIndex = paragraphs.findIndex((text, index) => index !== articleTitleIndex && isLikelyBasicTitle(text));
         let firstContentSeen = false;
         return paragraphs.map((text, index) => {
-          if (authorPattern.test(text)) return { role: 'author', text };
-          if (text.length <= 42 && titlePattern.test(text)) return { role: 'chapter-title', text };
+          if (index === articleTitleIndex) return { role: 'article-title', text };
+          if (basicAuthorPattern.test(text)) return { role: 'author', text };
+          if (isLikelyBasicTitle(text)) return { role: 'chapter-title', text };
           if ((firstTitleIndex > 0 && index < firstTitleIndex) || (firstTitleIndex < 0 && !firstContentSeen)) {
             firstContentSeen = true;
             return { role: 'intro', text };
@@ -3610,6 +3689,8 @@
         }
 
         const blocks = [];
+        const articleTitle = payload.article_title || payload.articleTitle || payload.title;
+        if (articleTitle) blocks.push({ role: 'article-title', text: String(articleTitle) });
         if (payload.author) blocks.push({ role: 'author', text: String(payload.author).match(authorPattern) ? String(payload.author) : `作者：${payload.author}` });
         const intros = Array.isArray(payload.intro) ? payload.intro : payload.intro ? [payload.intro] : [];
         intros.forEach((text) => blocks.push({ role: 'intro', text: String(text) }));
@@ -3696,13 +3777,14 @@
       function renderSemanticBlocks(blocks) {
         if (!blocks.length) throw new Error('没有可填入的正文内容');
         editor.innerHTML = '';
-        const counts = { author: 0, intro: 0, 'chapter-title': 0, body: 0 };
+        const counts = { 'article-title': 0, author: 0, intro: 0, 'chapter-title': 0, body: 0 };
 
         blocks.forEach(({ role, text, highlights }) => {
-          const normalizedRole = ['author', 'intro', 'chapter-title', 'body'].includes(role) ? role : 'body';
+          const normalizedRole = ['article-title', 'author', 'intro', 'chapter-title', 'body'].includes(role) ? role : 'body';
           const paragraph = document.createElement('p');
           paragraph.dataset.wechatRole = normalizedRole;
           paragraph.textContent = text.trim();
+          if (normalizedRole === 'article-title') paragraph.setAttribute('style', articleTitleStyle());
           if (normalizedRole === 'author') paragraph.setAttribute('style', authorStyle());
           if (normalizedRole === 'intro') paragraph.setAttribute('style', introStyle());
           if (normalizedRole === 'chapter-title') {
@@ -3732,7 +3814,7 @@
         rememberOriginalArticle(true);
         updateOutput();
         renderChecks(null);
-        agentStatus.textContent = `已识别：作者 ${counts.author} · 导语 ${counts.intro} · 标题 ${counts['chapter-title']} · 正文 ${counts.body}`;
+        agentStatus.textContent = `已识别：全文标题 ${counts['article-title']} · 作者 ${counts.author} · 导语 ${counts.intro} · 章节标题 ${counts['chapter-title']} · 正文 ${counts.body}`;
         return counts;
       }
 
