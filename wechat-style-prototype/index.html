@@ -926,6 +926,37 @@
       background: currentColor;
       clip-path: polygon(18% 0, 82% 0, 100% 100%, 0 100%);
     }
+    .image-tool-glyph {
+      position: relative;
+      display: block;
+      width: 16px;
+      height: 13px;
+      overflow: hidden;
+      border: 1.5px solid currentColor;
+      border-radius: 3px;
+    }
+    .image-tool-glyph::before {
+      content: '';
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .image-tool-glyph::after {
+      content: '';
+      position: absolute;
+      left: 1px;
+      bottom: -1px;
+      width: 12px;
+      height: 8px;
+      background: currentColor;
+      clip-path: polygon(0 100%, 37% 38%, 57% 68%, 76% 26%, 100% 100%);
+    }
+    .image-menu .tool-menu-popover { display: grid; grid-template-columns: 1fr; }
+    .image-menu .tool-menu-popover button { min-width: 112px; text-align: left; }
     .history-button {
       display: inline-grid;
       place-items: center;
@@ -1076,6 +1107,20 @@
     .editor-page:focus { box-shadow: 0 0 0 2px rgba(255, 104, 39, 0.2), 0 10px 32px rgba(49, 40, 28, 0.08); }
     .editor-page::selection,
     .editor-page *::selection { background: rgba(255, 168, 121, 0.3); }
+    .editor-page [data-wechat-role="image"] { text-align: center; }
+    .editor-page img {
+      display: inline-block;
+      max-width: 100%;
+      height: auto;
+      margin: 0 auto;
+      vertical-align: top;
+      cursor: pointer;
+    }
+    .editor-page img[data-image-selected="true"] {
+      outline: 2px solid var(--orange);
+      outline-offset: 3px;
+      border-radius: 2px;
+    }
     .editor-page [data-format-warning] {
       background-color: rgba(255, 181, 111, .12);
       text-decoration-line: underline;
@@ -1480,7 +1525,7 @@
         <button id="reset-sample" class="header-icon-control" type="button" aria-label="还原最早粘贴的版本" data-tooltip="还原到最早粘贴版本"><span class="header-symbol restore-header-icon" aria-hidden="true"></span></button>
         <a class="header-action-link header-icon-control full-version-link" href="index.html?view=desktop" target="_top" aria-label="PC 端完整版" title="PC 端完整版"><span class="header-symbol pc-header-icon" aria-hidden="true"></span></a>
         <button id="search-toggle" class="header-icon-control" type="button" aria-label="搜索全文" aria-expanded="false" aria-controls="document-search" data-tooltip="搜索全文"><span class="header-symbol search-header-icon" aria-hidden="true"></span></button>
-        <button id="basic-identify" class="header-icon-control" type="button" aria-label="基础识别作者、章节标题与正文" data-tooltip="只识别作者、带序号标题与正文"><span class="header-symbol identify-header-icon" aria-hidden="true"></span></button>
+        <button id="basic-identify" class="header-icon-control" type="button" aria-label="基础识别作者、章节标题与正文" data-tooltip="识别作者、带序号或无标点短标题与正文"><span class="header-symbol identify-header-icon" aria-hidden="true"></span></button>
         <button id="validate" class="header-icon-control" type="button" aria-label="格式审核" data-tooltip="检查并定位格式偏差"><span class="header-symbol audit-header-icon" aria-hidden="true"></span></button>
         <button id="format-all" class="primary header-icon-control" type="button" aria-label="自动排版并检查" data-tooltip="自动排版并检查"><span class="header-symbol format-header-icon" aria-hidden="true"></span></button>
       </div>
@@ -1604,6 +1649,13 @@
           <button class="icon-button quote-button" type="button" data-command="quote" aria-label="引用" data-tooltip="添加或取消引用格式">“</button>
           <button class="icon-button" type="button" data-command="bold" aria-label="主题色加粗" data-tooltip="添加或取消主题色粗体"><strong>B</strong></button>
           <button class="icon-button italic-button" type="button" data-command="italic" aria-label="斜体" data-tooltip="添加或取消斜体"><em>I</em></button>
+          <details class="tool-menu image-menu" id="image-menu">
+            <summary aria-label="图片操作" data-tooltip="粘贴图片或复制选中图片"><span class="image-tool-glyph" aria-hidden="true"></span></summary>
+            <div class="tool-menu-popover">
+              <button id="paste-image" type="button">粘贴剪贴板图片</button>
+              <button id="copy-selected-image" type="button">复制选中图片</button>
+            </div>
+          </details>
           <details class="tool-menu indent-menu" id="paragraph-indent-menu">
             <summary aria-label="两端缩进" data-tooltip="设置段落两端缩进"><span class="indent-glyph" aria-hidden="true"><span></span><span></span><span></span></span><span id="current-indent" class="visually-hidden">8</span></summary>
             <div class="tool-menu-popover">
@@ -1744,6 +1796,9 @@
       const searchNextButton = document.getElementById('search-next');
       const searchCloseButton = document.getElementById('search-close');
       const basicIdentifyButton = document.getElementById('basic-identify');
+      const imageMenu = document.getElementById('image-menu');
+      const pasteImageButton = document.getElementById('paste-image');
+      const copySelectedImageButton = document.getElementById('copy-selected-image');
       const mobilePreviewToggle = document.getElementById('mobile-preview-toggle');
       const mobilePublishPreview = document.getElementById('mobile-publish-preview');
       const publishPreviewScreen = document.getElementById('publish-preview-screen');
@@ -2084,6 +2139,14 @@
         return `margin:0 ${indent}px 24px;padding:0 0 0 14px;border-left:3px solid ${currentAccentColor};font-size:${currentBodySize}px;line-height:1.9;color:#666666;text-align:left;font-family:${fontFamily};`;
       }
 
+      function imageBlockStyle(indent = currentIndent) {
+        return `margin:0 ${indent}px 24px;padding:0;line-height:0;text-align:center;`;
+      }
+
+      function imageElementStyle() {
+        return 'display:inline-block;max-width:100%;height:auto;margin:0 auto;vertical-align:top;';
+      }
+
       function setThemeColor(color) {
         currentTitleColor = color;
         currentAccentColor = color;
@@ -2256,6 +2319,7 @@
         clone.removeAttribute('contenteditable');
         clone.removeAttribute('aria-label');
         clone.querySelectorAll('[data-guidance-marker]').forEach((node) => node.remove());
+        clone.querySelectorAll('[data-image-selected]').forEach((node) => node.removeAttribute('data-image-selected'));
         clone.querySelectorAll('[data-format-warning]').forEach((node) => node.removeAttribute('data-format-warning'));
         return clone;
       }
@@ -2439,6 +2503,178 @@
             block.replaceWith(paragraph);
           }
         });
+
+        normalizeEditorImages();
+      }
+
+      function normalizeEditorImages() {
+        [...editor.querySelectorAll('img')].forEach((image) => {
+          if (image.closest('[data-guidance-marker]')) return;
+          image.setAttribute('style', imageElementStyle());
+          image.setAttribute('draggable', 'false');
+          if (!image.getAttribute('alt')) image.setAttribute('alt', '文章图片');
+
+          let topLevel = image;
+          while (topLevel.parentElement && topLevel.parentElement !== editor) topLevel = topLevel.parentElement;
+          if (topLevel.parentElement !== editor) return;
+          if (topLevel === image) {
+            const paragraph = document.createElement('p');
+            paragraph.dataset.wechatRole = 'image';
+            paragraph.setAttribute('style', imageBlockStyle());
+            image.replaceWith(paragraph);
+            paragraph.appendChild(image);
+            return;
+          }
+          if (!topLevel.textContent.trim()) {
+            topLevel.dataset.wechatRole = 'image';
+            topLevel.setAttribute('style', imageBlockStyle());
+          } else {
+            image.style.display = 'block';
+          }
+        });
+      }
+
+      function currentImageInsertionAnchor() {
+        const selection = window.getSelection();
+        let node = selection?.anchorNode;
+        if (node?.nodeType === Node.TEXT_NODE) node = node.parentElement;
+        const selectedBlock = node?.closest?.('p, div, h1, h2, h3, h4, figure');
+        if (selectedBlock && selectedBlock.parentElement === editor) return selectedBlock;
+        const remembered = lastToolbarTarget?.isConnected && editor.contains(lastToolbarTarget) ? lastToolbarTarget : null;
+        return remembered?.parentElement === editor ? remembered : editor.lastElementChild;
+      }
+
+      function insertCenteredImage(source, alt = '文章图片', afterBlock = currentImageInsertionAnchor()) {
+        const paragraph = document.createElement('p');
+        paragraph.dataset.wechatRole = 'image';
+        paragraph.setAttribute('style', imageBlockStyle());
+        const image = document.createElement('img');
+        image.src = source;
+        image.alt = alt || '文章图片';
+        image.setAttribute('style', imageElementStyle());
+        image.setAttribute('draggable', 'false');
+        paragraph.appendChild(image);
+
+        if (afterBlock?.parentElement === editor) afterBlock.insertAdjacentElement('afterend', paragraph);
+        else editor.appendChild(paragraph);
+
+        editor.querySelectorAll('img[data-image-selected]').forEach((node) => node.removeAttribute('data-image-selected'));
+        image.dataset.imageSelected = 'true';
+        const range = document.createRange();
+        range.setStartAfter(paragraph);
+        range.collapse(true);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        savedEditorRange = range.cloneRange();
+        return paragraph;
+      }
+
+      function fileAsDataUrl(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ''));
+          reader.onerror = () => reject(reader.error || new Error('图片读取失败'));
+          reader.readAsDataURL(file);
+        });
+      }
+
+      function temporaryImageButtonText(button, text, duration = 2200) {
+        const original = button.textContent;
+        button.textContent = text;
+        window.setTimeout(() => { button.textContent = original; }, duration);
+      }
+
+      async function insertImageFiles(files, feedbackButton = pasteImageButton) {
+        const images = [...files].filter((file) => file?.type?.startsWith('image/'));
+        if (!images.length) {
+          temporaryImageButtonText(feedbackButton, '未找到图片');
+          return 0;
+        }
+        dismissGuidanceSample();
+        let anchor = currentImageInsertionAnchor();
+        for (const [index, file] of images.entries()) {
+          const source = await fileAsDataUrl(file);
+          anchor = insertCenteredImage(source, file.name || `粘贴图片 ${index + 1}`, anchor);
+        }
+        rememberOriginalArticle(false);
+        updateOutput();
+        scheduleValidation();
+        scheduleEditorHistory();
+        temporaryImageButtonText(feedbackButton, `已插入 ${images.length} 张`);
+        imageMenu.open = false;
+        return images.length;
+      }
+
+      async function pasteImagesFromClipboard() {
+        if (!navigator.clipboard?.read) {
+          temporaryImageButtonText(pasteImageButton, '请在正文中直接粘贴');
+          return;
+        }
+        try {
+          const clipboardItems = await navigator.clipboard.read();
+          const blobs = [];
+          for (const item of clipboardItems) {
+            for (const type of item.types.filter((value) => value.startsWith('image/'))) {
+              blobs.push(await item.getType(type));
+            }
+          }
+          await insertImageFiles(blobs, pasteImageButton);
+        } catch {
+          temporaryImageButtonText(pasteImageButton, '请允许剪贴板权限');
+        }
+      }
+
+      function selectedEditorImage() {
+        return editor.querySelector('img[data-image-selected="true"]');
+      }
+
+      function copyImageElementFallback(image) {
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNode(image);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        const copied = document.execCommand('copy');
+        selection.removeAllRanges();
+        return copied;
+      }
+
+      async function imageBlobAsPng(blob) {
+        if (blob.type === 'image/png') return blob;
+        const objectUrl = URL.createObjectURL(blob);
+        try {
+          const image = new Image();
+          image.src = objectUrl;
+          await image.decode();
+          const canvas = document.createElement('canvas');
+          canvas.width = image.naturalWidth;
+          canvas.height = image.naturalHeight;
+          canvas.getContext('2d').drawImage(image, 0, 0);
+          return await new Promise((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error('图片转换失败')), 'image/png'));
+        } finally {
+          URL.revokeObjectURL(objectUrl);
+        }
+      }
+
+      async function copySelectedImage() {
+        const image = selectedEditorImage();
+        if (!image) {
+          temporaryImageButtonText(copySelectedImageButton, '请先点选图片');
+          return;
+        }
+        let copied = false;
+        try {
+          const sourceBlob = await (await fetch(image.src)).blob();
+          const pngBlob = await imageBlobAsPng(sourceBlob);
+          if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined') throw new Error('剪贴板不支持');
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
+          copied = true;
+        } catch {
+          copied = copyImageElementFallback(image);
+        }
+        temporaryImageButtonText(copySelectedImageButton, copied ? '已复制图片' : '复制失败');
+        if (copied) imageMenu.open = false;
       }
 
       function isTitleBlock(block) {
@@ -2453,7 +2689,12 @@
         const normalized = String(text || '').replace(/\s+/g, ' ').trim();
         if (!normalized || normalized.length > 60) return false;
         if (/[。！？!?；;]/.test(normalized)) return false;
-        return basicNumberedTitlePattern.test(normalized);
+        if (basicNumberedTitlePattern.test(normalized)) return true;
+        if (normalized.length < 2 || normalized.length > 24) return false;
+        if (/[，,.。！？!?；;：:、“”‘’"'（）()\[\]【】《》〈〉<>—–…·%％+＋\-/\\|]/.test(normalized)) return false;
+        if (/^(?:摘要|导语|编者按|前言|作者|撰文|来源|日期|时间|正文)$/.test(normalized)) return false;
+        if (/^[\d\s.%+-]+$/.test(normalized)) return false;
+        return /[A-Za-z\u3400-\u9fff]/.test(normalized);
       }
 
       function basicIdentifyStructure(feedbackButton = basicIdentifyButton) {
@@ -2462,7 +2703,7 @@
         convertMarkdownEmphasis(editor);
         normalizeTopLevelBlocks();
 
-        const counts = { author: 0, title: 0, body: 0 };
+        const counts = { author: 0, title: 0, body: 0, image: 0 };
         [...editor.children].forEach((sourceBlock) => {
           if (sourceBlock.hasAttribute('data-guidance-marker')) return;
           let block = sourceBlock;
@@ -2477,6 +2718,14 @@
           block.removeAttribute('data-quote-previous-role');
           block.removeAttribute('data-title-original');
           block.removeAttribute('data-title-base');
+
+          if (block.querySelector('img') && !text) {
+            block.dataset.wechatRole = 'image';
+            block.setAttribute('style', imageBlockStyle());
+            normalizeEditorImages();
+            counts.image += 1;
+            return;
+          }
 
           if (basicAuthorPattern.test(text)) {
             block.dataset.wechatRole = 'author';
@@ -2508,7 +2757,7 @@
         syncThemeColor();
         updateOutput();
         validateFormat();
-        const originalTooltip = '只识别作者、带序号标题与正文';
+        const originalTooltip = '识别作者、带序号或无标点短标题与正文';
         const resultText = `已识别：作者 ${counts.author} · 标题 ${counts.title} · 正文 ${counts.body}`;
         feedbackButton?.setAttribute('data-tooltip', resultText);
         const originalLabel = feedbackButton?.textContent;
@@ -2622,7 +2871,10 @@
         const firstContentIndex = sourceBlocks.findIndex((block) => !authorPattern.test(block.textContent.trim()));
         sourceBlocks.forEach((sourceBlock, index) => {
           const text = sourceBlock.textContent.trim();
-          if (sourceBlock.dataset.wechatRole === 'quote') {
+          if (sourceBlock.querySelector('img') && !text) {
+            sourceBlock.dataset.wechatRole = 'image';
+            sourceBlock.setAttribute('style', imageBlockStyle());
+          } else if (sourceBlock.dataset.wechatRole === 'quote') {
             sourceBlock.setAttribute('style', quoteStyle());
           } else if (isTitleBlock(sourceBlock)) {
             const paragraph = document.createElement('p');
@@ -2646,6 +2898,8 @@
             sourceBlock.setAttribute('style', bodyStyle());
           }
         });
+
+        normalizeEditorImages();
 
         editor.querySelectorAll('font').forEach((element) => {
           element.removeAttribute('face');
@@ -3189,6 +3443,7 @@
       }
 
       function copyRichText(feedbackButton = copyButton) {
+        normalizeEditorImages();
         const copyStage = document.createElement('div');
         const cleanClone = sanitizedEditorClone();
         copyStage.setAttribute('style', 'position:fixed;left:-10000px;top:0;width:620px;background:#fff;pointer-events:none;');
@@ -3897,6 +4152,8 @@
 
       document.getElementById('format-all').addEventListener('click', formatAll);
       basicIdentifyButton.addEventListener('click', () => basicIdentifyStructure(basicIdentifyButton));
+      pasteImageButton.addEventListener('click', pasteImagesFromClipboard);
+      copySelectedImageButton.addEventListener('click', copySelectedImage);
       document.getElementById('validate').addEventListener('click', validateFormat);
       document.getElementById('reset-sample').addEventListener('click', restoreOriginalArticle);
       copyButton.addEventListener('click', () => copyRichText(copyButton));
@@ -3963,11 +4220,22 @@
         updateOutput();
         scheduleValidation();
       });
-      editor.addEventListener('paste', () => {
+      editor.addEventListener('paste', (event) => {
+        const imageFiles = [...(event.clipboardData?.items || [])]
+          .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
+          .map((item) => item.getAsFile())
+          .filter(Boolean);
+        if (imageFiles.length) {
+          event.preventDefault();
+          insertImageFiles(imageFiles).catch(() => temporaryImageButtonText(pasteImageButton, '图片插入失败'));
+          return;
+        }
         dismissGuidanceSample();
         window.setTimeout(() => {
+          normalizeEditorImages();
           detectTopAuthorLine();
           rememberOriginalArticle(false);
+          updateOutput();
         }, 0);
       });
       editor.addEventListener('keydown', (event) => {
@@ -3980,6 +4248,11 @@
         savedEditorRange = null;
         lastToolbarTarget = null;
         lastToolbarBlocks = [];
+      });
+      editor.addEventListener('click', (event) => {
+        const image = event.target.closest?.('img');
+        editor.querySelectorAll('img[data-image-selected]').forEach((node) => node.removeAttribute('data-image-selected'));
+        if (image && editor.contains(image)) image.dataset.imageSelected = 'true';
       });
       document.addEventListener('selectionchange', rememberEditorSelection);
       document.addEventListener('keydown', (event) => {
