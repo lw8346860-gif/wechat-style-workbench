@@ -1717,6 +1717,7 @@
       const ORANGE = '#ff6827';
       const DEFAULT_THEME_COLOR = '#021eaa';
       const BODY_COLOR = '#333333';
+      const DEFAULT_LETTER_SPACING = '0.2em';
       const editor = document.getElementById('editor');
       const sampleTemplate = document.getElementById('sample-template');
       const sampleGuideTemplate = document.getElementById('sample-guide-template');
@@ -2074,27 +2075,27 @@
       }
 
       function bodyStyle(fontFamily = selectedFontStack, size = currentBodySize, indent = currentIndent) {
-        return `margin:0 ${indent}px 24px;font-size:${size}px;line-height:1.8;color:${BODY_COLOR};text-align:left;font-family:${fontFamily};`;
+        return `margin:0 ${indent}px 24px;font-size:${size}px;line-height:1.8;letter-spacing:${DEFAULT_LETTER_SPACING};color:${BODY_COLOR};text-align:left;font-family:${fontFamily};`;
       }
 
       function titleStyle(fontFamily = selectedFontStack, size = currentTitleSize, color = currentTitleColor, indent = currentIndent) {
-        return `margin:48px ${indent}px 24px;font-size:${size}px;line-height:1.35;color:${color};font-weight:700;text-align:left;font-family:${fontFamily};`;
+        return `margin:48px ${indent}px 24px;font-size:${size}px;line-height:1.35;letter-spacing:${DEFAULT_LETTER_SPACING};color:${color};font-weight:700;text-align:left;font-family:${fontFamily};`;
       }
 
       function articleTitleStyle(fontFamily = selectedFontStack, size = currentTitleSize, indent = currentIndent) {
-        return `margin:0 ${indent}px 24px;font-size:${size}px;line-height:1.35;color:${BODY_COLOR};font-weight:700;text-align:left;font-family:${fontFamily};`;
+        return `margin:0 ${indent}px 24px;font-size:${size}px;line-height:1.35;letter-spacing:${DEFAULT_LETTER_SPACING};color:${BODY_COLOR};font-weight:700;text-align:left;font-family:${fontFamily};`;
       }
 
       function emphasisStyle(fontFamily = selectedFontStack, color = currentAccentColor) {
-        return `font-size:${currentBodySize}px;line-height:1.8;color:${color};font-weight:700;font-family:${fontFamily};`;
+        return `font-size:${currentBodySize}px;line-height:1.8;letter-spacing:${DEFAULT_LETTER_SPACING};color:${color};font-weight:700;font-family:${fontFamily};`;
       }
 
       function blueEmphasisStyle(fontFamily = selectedFontStack, color = currentAccentColor) {
-        return `font-size:${currentBodySize}px;line-height:1.8;color:${color};font-weight:700;font-family:${fontFamily};`;
+        return `font-size:${currentBodySize}px;line-height:1.8;letter-spacing:${DEFAULT_LETTER_SPACING};color:${color};font-weight:700;font-family:${fontFamily};`;
       }
 
       function authorStyle(fontFamily = selectedFontStack, indent = currentIndent) {
-        return `margin:0 ${indent}px 24px;font-size:14px;line-height:1.6;color:#888888;text-align:left;font-family:${fontFamily};`;
+        return `margin:0 ${indent}px 24px;font-size:14px;line-height:1.6;letter-spacing:${DEFAULT_LETTER_SPACING};color:#888888;text-align:left;font-family:${fontFamily};`;
       }
 
       function introStyle(fontFamily = selectedFontStack, indent = currentIndent) {
@@ -2102,7 +2103,7 @@
       }
 
       function quoteStyle(fontFamily = selectedFontStack, indent = currentIndent) {
-        return `margin:0 ${indent}px 24px;padding:0 0 0 14px;border-left:3px solid ${currentAccentColor};font-size:${currentBodySize}px;line-height:1.9;color:#666666;text-align:left;font-family:${fontFamily};`;
+        return `margin:0 ${indent}px 24px;padding:0 0 0 14px;border-left:3px solid ${currentAccentColor};font-size:${currentBodySize}px;line-height:1.9;letter-spacing:${DEFAULT_LETTER_SPACING};color:#666666;text-align:left;font-family:${fontFamily};`;
       }
 
       function imageBlockStyle(indent = currentIndent) {
@@ -2111,6 +2112,10 @@
 
       function imageElementStyle() {
         return 'display:inline-block;max-width:100%;height:auto;margin:0 auto;vertical-align:top;';
+      }
+
+      function clearImportedInlineTracking() {
+        editor.querySelectorAll('span, font, em, i, a').forEach((element) => element.style.removeProperty('letter-spacing'));
       }
 
       function setThemeColor(color) {
@@ -2529,6 +2534,19 @@
         return true;
       }
 
+      function removeEmptyArticleBlocks() {
+        const meaningfulElementSelector = 'img, video, audio, iframe, canvas, svg, table, hr, object, embed';
+        let removedCount = 0;
+        [...editor.children].forEach((block) => {
+          if (block.hasAttribute('data-guidance-marker') || block.matches(meaningfulElementSelector) || block.querySelector(meaningfulElementSelector)) return;
+          const visibleText = block.textContent.replace(/[\s\u00a0\u200b-\u200d\u2060\ufeff]/g, '');
+          if (visibleText) return;
+          block.remove();
+          removedCount += 1;
+        });
+        return removedCount;
+      }
+
       function normalizeTopLevelBlocks() {
         [...editor.childNodes].forEach((node) => {
           if (node.nodeType !== Node.TEXT_NODE || !node.textContent.trim()) return;
@@ -2566,6 +2584,7 @@
           block.replaceWith(paragraph);
         });
 
+        removeEmptyArticleBlocks();
         normalizeEditorImages();
       }
 
@@ -2836,7 +2855,7 @@
             block.setAttribute('style', titleStyle());
             block.textContent = '';
             const span = document.createElement('span');
-            span.setAttribute('style', `font-size:${currentTitleSize}px;line-height:1.35;color:${currentTitleColor};font-weight:700;font-family:${selectedFontStack};`);
+            span.setAttribute('style', `font-size:${currentTitleSize}px;line-height:1.35;letter-spacing:${DEFAULT_LETTER_SPACING};color:${currentTitleColor};font-weight:700;font-family:${selectedFontStack};`);
             span.textContent = text;
             block.appendChild(span);
             counts.title += 1;
@@ -2848,6 +2867,7 @@
           counts.body += 1;
         });
 
+        clearImportedInlineTracking();
         applyTitleNumbering(currentTitleNumberStyle, false);
         syncThemeColor();
         updateOutput();
@@ -2965,7 +2985,7 @@
             numberLine.setAttribute(
               'style',
               `display:block;margin:0 0 ${style === 'chinese-box' ? 6 : 0}px;padding:0;` +
-              `font-size:${currentTitleSize}px;line-height:1.35;letter-spacing:2px;` +
+              `font-size:${currentTitleSize}px;line-height:1.35;letter-spacing:${DEFAULT_LETTER_SPACING};` +
               `color:${currentTitleColor};font-weight:700;font-family:${selectedFontStack};`
             );
             numberLine.textContent = chineseNumber(index + 1);
@@ -2976,14 +2996,14 @@
                 'style',
                 `display:inline;width:auto;margin:0;padding:2px 6px;box-sizing:border-box;` +
                 `box-decoration-break:clone;-webkit-box-decoration-break:clone;` +
-                `font-size:${currentTitleSize}px;line-height:1.35;letter-spacing:2px;` +
+                `font-size:${currentTitleSize}px;line-height:1.35;letter-spacing:${DEFAULT_LETTER_SPACING};` +
                 `background-color:${currentTitleColor};color:#ffffff;font-weight:700;font-family:${selectedFontStack};`
               );
             } else {
               titleLine.dataset.wechatTitlePart = 'title';
               titleLine.setAttribute(
                 'style',
-                `display:block;margin:0;padding:0;font-size:${currentTitleSize}px;line-height:1.35;` +
+                `display:block;margin:0;padding:0;font-size:${currentTitleSize}px;line-height:1.35;letter-spacing:${DEFAULT_LETTER_SPACING};` +
                 `color:${currentTitleColor};font-weight:700;font-family:${selectedFontStack};`
               );
             }
@@ -3030,7 +3050,7 @@
             paragraph.dataset.titleBase = sourceBlock.dataset.titleBase || titleBaseFromBlock(sourceBlock);
             paragraph.setAttribute('style', titleStyle());
             const span = document.createElement('span');
-            span.setAttribute('style', `font-size:${currentTitleSize}px;line-height:1.35;color:${currentTitleColor};font-weight:700;font-family:${selectedFontStack};`);
+            span.setAttribute('style', `font-size:${currentTitleSize}px;line-height:1.35;letter-spacing:${DEFAULT_LETTER_SPACING};color:${currentTitleColor};font-weight:700;font-family:${selectedFontStack};`);
             span.textContent = text;
             paragraph.appendChild(span);
             sourceBlock.replaceWith(paragraph);
@@ -3052,11 +3072,12 @@
           element.removeAttribute('face');
           element.removeAttribute('size');
         });
-        editor.querySelectorAll('span, font, em, i').forEach((element) => {
+        editor.querySelectorAll('span, font, em, i, a').forEach((element) => {
           if (element.closest('[data-wechat-role="chapter-title"]')) return;
           if (element.closest('strong, b, mark, [data-wechat-role="emphasis"], [data-wechat-role="emphasis-blue"], [data-wechat-role="emphasis-color"]')) return;
           element.style.removeProperty('font-size');
           element.style.removeProperty('font-family');
+          element.style.removeProperty('letter-spacing');
         });
         editor.querySelectorAll('strong, b, mark, [data-wechat-role="emphasis"], [data-wechat-role="emphasis-blue"], [data-wechat-role="emphasis-color"]').forEach((element) => {
           if (element.closest('[data-wechat-role="chapter-title"]')) return;
@@ -3069,6 +3090,7 @@
             child.removeAttribute('size');
             child.style.fontSize = `${currentBodySize}px`;
             child.style.fontFamily = selectedFontStack;
+            child.style.letterSpacing = DEFAULT_LETTER_SPACING;
             child.style.color = currentAccentColor;
             child.style.fontWeight = '700';
           });
@@ -3588,7 +3610,7 @@
       }
 
       function updateOutput() {
-        htmlOutput.value = `<section style="font-size:${currentBodySize}px;line-height:1.8;color:${BODY_COLOR};text-align:left;word-break:break-word;font-family:${selectedFontStack};">\n${sanitizedEditorHtml()}\n</section>`;
+        htmlOutput.value = `<section style="font-size:${currentBodySize}px;line-height:1.8;letter-spacing:${DEFAULT_LETTER_SPACING};color:${BODY_COLOR};text-align:left;word-break:break-word;font-family:${selectedFontStack};">\n${sanitizedEditorHtml()}\n</section>`;
       }
 
       function copyRichText(feedbackButton = copyButton) {
@@ -4388,6 +4410,7 @@
         }
         dismissGuidanceSample();
         window.setTimeout(() => {
+          removeEmptyArticleBlocks();
           normalizeEditorImages();
           detectTopAuthorLine();
           rememberOriginalArticle(false);
