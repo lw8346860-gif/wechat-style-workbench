@@ -2462,6 +2462,60 @@
         });
       }
 
+      function convertStraightDoubleQuotes(root) {
+        let convertedCount = 0;
+        const blocks = root === editor ? [...root.children] : [root];
+        blocks.forEach((block) => {
+          if (block.hasAttribute?.('data-guidance-marker') || block.matches?.('pre, code, kbd, samp')) return;
+          const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+          const nodes = [];
+          while (walker.nextNode()) {
+            const node = walker.currentNode;
+            if (node.parentElement?.closest('pre, code, kbd, samp, script, style')) continue;
+            if (node.nodeValue.includes('"')) nodes.push(node);
+          }
+
+          let quoteIsOpen = false;
+          nodes.forEach((node) => {
+            const source = node.nodeValue;
+            let output = '';
+            for (let index = 0; index < source.length; index += 1) {
+              const character = source[index];
+              if (character !== '"') {
+                output += character;
+                continue;
+              }
+
+              const previousImmediate = source[index - 1] || '';
+              const nextImmediate = source[index + 1] || '';
+              const looksLikeMeasurement = /\d/.test(previousImmediate) && (!nextImmediate || /[\s,，。.!！？?;；:：)）\]】]/.test(nextImmediate));
+              if (looksLikeMeasurement) {
+                output += character;
+                continue;
+              }
+
+              const previous = source.slice(0, index).match(/\S(?=\s*$)/)?.[0] || '';
+              const next = source.slice(index + 1).match(/^\s*(\S)/)?.[1] || '';
+              const looksOpening = !previous || /[\s([{（【《〈“‘:：]/.test(previousImmediate || previous);
+              const looksClosing = !next || /[\s,，。.!！？?;；:：)）\]】》〉”’]/.test(nextImmediate || next);
+
+              if (quoteIsOpen) {
+                output += '”';
+                quoteIsOpen = false;
+              } else if (looksClosing && !looksOpening) {
+                output += '”';
+              } else {
+                output += '“';
+                quoteIsOpen = true;
+              }
+              convertedCount += 1;
+            }
+            node.nodeValue = output;
+          });
+        });
+        return convertedCount;
+      }
+
       const pastedBlockSelector = 'p, div, h1, h2, h3, h4, h5, h6, blockquote, pre, ul, ol, figure, section, article';
 
       function nodeHasPastedContent(node) {
@@ -2808,6 +2862,7 @@
         rememberOriginalArticle(false);
         convertMarkdownEmphasis(editor);
         normalizeTopLevelBlocks();
+        convertStraightDoubleQuotes(editor);
         removeDetachedTitleNumberBlocks();
         detectLeadingArticleTitle();
 
@@ -3028,6 +3083,7 @@
         dismissGuidanceSample();
         convertMarkdownEmphasis(editor);
         normalizeTopLevelBlocks();
+        convertStraightDoubleQuotes(editor);
         removeDetachedTitleNumberBlocks();
         detectLeadingArticleTitle();
 
@@ -3895,6 +3951,7 @@
         });
 
         convertMarkdownEmphasis(editor);
+        convertStraightDoubleQuotes(editor);
         editor.querySelectorAll('strong').forEach((element) => {
           if (element.dataset.wechatRole === 'emphasis-blue') {
             element.setAttribute('style', blueEmphasisStyle());
