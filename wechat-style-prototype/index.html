@@ -2463,6 +2463,7 @@
       }
 
       function convertStraightDoubleQuotes(root) {
+        const convertibleDoubleQuotes = new Set(['"', '＂', '″', '„', '‟']);
         let convertedCount = 0;
         const blocks = root === editor ? [...root.children] : [root];
         blocks.forEach((block) => {
@@ -2472,7 +2473,7 @@
           while (walker.nextNode()) {
             const node = walker.currentNode;
             if (node.parentElement?.closest('pre, code, kbd, samp, script, style')) continue;
-            if (node.nodeValue.includes('"')) nodes.push(node);
+            if ([...node.nodeValue].some((character) => convertibleDoubleQuotes.has(character))) nodes.push(node);
           }
 
           let quoteIsOpen = false;
@@ -2481,14 +2482,14 @@
             let output = '';
             for (let index = 0; index < source.length; index += 1) {
               const character = source[index];
-              if (character !== '"') {
+              if (!convertibleDoubleQuotes.has(character)) {
                 output += character;
                 continue;
               }
 
               const previousImmediate = source[index - 1] || '';
               const nextImmediate = source[index + 1] || '';
-              const looksLikeMeasurement = /\d/.test(previousImmediate) && (!nextImmediate || /[\s,，。.!！？?;；:：)）\]】]/.test(nextImmediate));
+              const looksLikeMeasurement = !quoteIsOpen && /\d/.test(previousImmediate);
               if (looksLikeMeasurement) {
                 output += character;
                 continue;
