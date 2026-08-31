@@ -813,12 +813,14 @@
     .size-tool summary,
     .title-number-menu summary,
     .indent-menu summary,
+    .spacing-menu summary,
     .current-color-tool,
     .font-tool { width: 36px; min-width: 36px; height: 30px; padding: 0; justify-content: center; }
     .size-tool summary { position: relative; padding: 0; }
     .size-tool summary::after { display: none; }
     .title-number-menu summary::after,
     .indent-menu summary::after,
+    .spacing-menu summary::after,
     .palette-menu summary::after,
     .font-menu summary::after { display: none; }
     .tool-menu[open] summary { border-color: #e2a07f; box-shadow: 0 0 0 3px rgba(255, 104, 39, 0.1); }
@@ -859,6 +861,35 @@
     .font-tool { justify-content: center; font-family: Georgia, "Times New Roman", serif; font-size: 16px !important; }
     .font-menu .tool-menu-popover { display: grid; grid-template-columns: 1fr; }
     .font-menu .tool-menu-popover button { min-width: 76px; text-align: left; }
+    .spacing-menu .tool-menu-popover {
+      display: grid;
+      grid-template-columns: repeat(3, 42px);
+      gap: 7px;
+      padding: 8px;
+    }
+    .spacing-column { display: grid; grid-template-rows: 18px repeat(3, 28px); gap: 4px; }
+    .spacing-column-label {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 750;
+      line-height: 18px;
+      text-align: center;
+    }
+    .spacing-choice {
+      min-width: 42px !important;
+      height: 28px;
+      padding: 0 !important;
+      border-radius: 7px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+    }
+    .spacing-choice[aria-pressed="true"] {
+      border-color: color-mix(in srgb, var(--orange) 52%, var(--line));
+      background: color-mix(in srgb, var(--orange) 12%, var(--control));
+      color: var(--orange);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--orange) 12%, transparent);
+    }
     .title-number-menu .tool-menu-popover { display: grid; grid-template-columns: 1fr; }
     .title-number-menu .tool-menu-popover button { min-width: 98px; text-align: left; }
     .title-theme-dot {
@@ -1479,7 +1510,7 @@
 <body>
   <main class="app-shell">
     <header class="topbar">
-      <p class="maker-meta">制作人：松壑 <span>v-1.0.3</span></p>
+      <p class="maker-meta">制作人：松壑 <span>v-1.0.4</span></p>
       <div>
         <p class="eyebrow">Formatting Lab</p>
         <div class="brand-title-row">
@@ -1613,6 +1644,29 @@
               <button type="button" data-font-key="kaiti">楷体</button>
             </div>
           </details>
+          <details class="tool-menu spacing-menu" id="spacing-menu">
+            <summary aria-label="字间距、行间距和段间距" data-tooltip="三档调整字距、行距与段距">距</summary>
+            <div class="tool-menu-popover" aria-label="间距设置">
+              <div class="spacing-column" aria-label="字间距">
+                <span class="spacing-column-label">字</span>
+                <button class="spacing-choice" type="button" data-spacing-kind="letter" data-spacing-level="small" aria-label="小字间距">小</button>
+                <button class="spacing-choice" type="button" data-spacing-kind="letter" data-spacing-level="medium" aria-label="中字间距">中</button>
+                <button class="spacing-choice" type="button" data-spacing-kind="letter" data-spacing-level="large" aria-label="大字间距">大</button>
+              </div>
+              <div class="spacing-column" aria-label="行间距">
+                <span class="spacing-column-label">行</span>
+                <button class="spacing-choice" type="button" data-spacing-kind="line" data-spacing-level="small" aria-label="小行间距">小</button>
+                <button class="spacing-choice" type="button" data-spacing-kind="line" data-spacing-level="medium" aria-label="中行间距">中</button>
+                <button class="spacing-choice" type="button" data-spacing-kind="line" data-spacing-level="large" aria-label="大行间距">大</button>
+              </div>
+              <div class="spacing-column" aria-label="段间距">
+                <span class="spacing-column-label">段</span>
+                <button class="spacing-choice" type="button" data-spacing-kind="paragraph" data-spacing-level="small" aria-label="小段间距">小</button>
+                <button class="spacing-choice" type="button" data-spacing-kind="paragraph" data-spacing-level="medium" aria-label="中段间距">中</button>
+                <button class="spacing-choice" type="button" data-spacing-kind="paragraph" data-spacing-level="large" aria-label="大段间距">大</button>
+              </div>
+            </div>
+          </details>
           <span class="toolbar-separator" aria-hidden="true"></span>
           <button class="icon-button brush-button" type="button" data-command="clear" aria-label="默认格式刷" data-tooltip="清除格式并恢复为正文"><span class="brush-glyph" aria-hidden="true"></span></button>
           <button class="icon-button quote-button" type="button" data-command="quote" aria-label="引用" data-tooltip="添加或取消引用格式">“</button>
@@ -1717,7 +1771,12 @@
       const ORANGE = '#ff6827';
       const DEFAULT_THEME_COLOR = '#021eaa';
       const BODY_COLOR = '#333333';
-      const DEFAULT_LETTER_SPACING = '0.2em';
+      const SPACING_LEVELS = {
+        letter: { small: '0', medium: '0.1em', large: '0.2em' },
+        line: { small: 1.6, medium: 1.8, large: 2 },
+        paragraph: { small: 16, medium: 24, large: 32 }
+      };
+      const TITLE_LINE_HEIGHTS = { small: 1.2, medium: 1.35, large: 1.5 };
       const editor = document.getElementById('editor');
       const sampleTemplate = document.getElementById('sample-template');
       const sampleGuideTemplate = document.getElementById('sample-guide-template');
@@ -1784,6 +1843,10 @@
       let currentAccentColor = DEFAULT_THEME_COLOR;
       let currentTitleNumberStyle = 'chinese-box';
       let currentIndent = 8;
+      let currentSpacingLevels = { letter: 'medium', line: 'medium', paragraph: 'medium' };
+      let currentLetterSpacing = SPACING_LEVELS.letter.medium;
+      let currentLineHeight = SPACING_LEVELS.line.medium;
+      let currentParagraphSpacing = SPACING_LEVELS.paragraph.medium;
       let editingThemeId = null;
       let validationTimer = null;
       const HISTORY_LIMIT = 10;
@@ -1812,9 +1875,9 @@
         { id: 'dark', label: '黑夜', icon: '☾' }
       ];
       const BUILTIN_THEMES = [
-        { id: 'navy', name: '阅读蓝', bodySize: 16, titleSize: 24, indent: 8, fontKey: 'heiti', themeColor: '#163a5f' },
-        { id: 'editorial', name: '杂志紫', bodySize: 15, titleSize: 24, indent: 8, fontKey: 'songti', themeColor: '#6c4b8c' },
-        { id: 'classic', name: '经典橘', bodySize: 16, titleSize: 32, indent: 8, fontKey: 'system', themeColor: '#ff6827' }
+        { id: 'navy', name: '阅读蓝', bodySize: 16, titleSize: 24, indent: 8, fontKey: 'heiti', themeColor: '#163a5f', spacing: { letter: 'medium', line: 'medium', paragraph: 'medium' } },
+        { id: 'editorial', name: '杂志紫', bodySize: 15, titleSize: 24, indent: 8, fontKey: 'songti', themeColor: '#6c4b8c', spacing: { letter: 'medium', line: 'medium', paragraph: 'medium' } },
+        { id: 'classic', name: '经典橘', bodySize: 16, titleSize: 32, indent: 8, fontKey: 'system', themeColor: '#ff6827', spacing: { letter: 'medium', line: 'medium', paragraph: 'medium' } }
       ];
 
       const AGENT_PROMPT = `你是公众号文章的版序识别与语义排版助手。\n\n原文会和本提示词一起发送给你。\n\n任务：理解全文，识别全文标题、作者、真正存在的摘要或导语、章节标题、章节正文和少量真正重要的句子；不虚构信息、不改变事实，只修正明显的断句或粘贴错误。把结果填入下方 JSON，并将填好的 JSON 直接返回给用户。\n\n必须使用英文半角 JSON 结构标点（" : , { } [ ]），不得用中文弯引号包围键名或字符串。\n\n只返回可被 JSON.parse 解析的 JSON 对象，不要附加解释、Markdown、代码围栏或 HTML：\n{\n  "article_title": "全文标题；没有则为空字符串",\n  "author": "作者姓名；没有则为空字符串",\n  "intro": ["仅填写原文明示或内容明确属于摘要、导语、编者按的自然段；没有则为空数组"],\n  "sections": [\n    {\n      "title": "一、章节标题",\n      "paragraphs": [\n        {\n          "text": "完整的章节正文自然段",\n          "highlights": ["正文中原样出现的完整核心判断句"]\n        }\n      ]\n    }\n  ]\n}\n\n结构规则：\n1. article_title 只填写全文总标题，永远不要在其中添加章节序号。author 只写作者姓名。作者、来源、日期、文章标题和普通开场正文都不得放入 intro。\n2. intro 采用高门槛判断：只有原文明示为“摘要”“导语”“编者按”，或内容明确承担全文概括功能时才填写。仅仅位于第一章之前，不能作为 intro 的判断依据；拿不准时返回空数组，并把相应文字保留为正文。\n3. 不要把摘要、导语、作者信息、来源或普通正文判断成引用。引用只适用于原文中有明确发言者或来源、确实需要读者重视的他人原话；本 JSON 不自动套用引用格式，原话仍按正文保留，是否设为引用由用户手动决定。\n4. paragraphs 一项对应一个完整自然段。没有显式标题时，可根据语义生成克制、准确的小标题。\n5. 每个章节所有 paragraphs 中的 highlights 合计最多 3 句，通常选择 1—2 句；宁缺毋滥。highlights 必须在对应正文中逐字出现，操作台会统一加粗并使用当前主题色呈现。`;
@@ -2074,28 +2137,48 @@
         window.addEventListener('resize', () => setEditorWidth(editorResizeShell.getBoundingClientRect().width, false));
       }
 
+      function normalizeSpacingLevel(kind, level, fallback = 'medium') {
+        return Object.hasOwn(SPACING_LEVELS[kind] || {}, level) ? level : fallback;
+      }
+
+      function syncSpacingValues() {
+        currentLetterSpacing = SPACING_LEVELS.letter[currentSpacingLevels.letter];
+        currentLineHeight = SPACING_LEVELS.line[currentSpacingLevels.line];
+        currentParagraphSpacing = SPACING_LEVELS.paragraph[currentSpacingLevels.paragraph];
+      }
+
+      function currentTitleLineHeight() {
+        return TITLE_LINE_HEIGHTS[currentSpacingLevels.line] || TITLE_LINE_HEIGHTS.medium;
+      }
+
+      function updateSpacingMenuState() {
+        document.querySelectorAll('[data-spacing-kind][data-spacing-level]').forEach((button) => {
+          button.setAttribute('aria-pressed', String(currentSpacingLevels[button.dataset.spacingKind] === button.dataset.spacingLevel));
+        });
+      }
+
       function bodyStyle(fontFamily = selectedFontStack, size = currentBodySize, indent = currentIndent) {
-        return `margin:0 ${indent}px 24px;font-size:${size}px;line-height:1.8;letter-spacing:${DEFAULT_LETTER_SPACING};color:${BODY_COLOR};text-align:left;font-family:${fontFamily};`;
+        return `margin:0 ${indent}px ${currentParagraphSpacing}px;font-size:${size}px;line-height:${currentLineHeight};letter-spacing:${currentLetterSpacing};color:${BODY_COLOR};text-align:left;font-family:${fontFamily};`;
       }
 
       function titleStyle(fontFamily = selectedFontStack, size = currentTitleSize, color = currentTitleColor, indent = currentIndent) {
-        return `margin:48px ${indent}px 24px;font-size:${size}px;line-height:1.35;letter-spacing:${DEFAULT_LETTER_SPACING};color:${color};font-weight:700;text-align:left;font-family:${fontFamily};`;
+        return `margin:48px ${indent}px ${currentParagraphSpacing}px;font-size:${size}px;line-height:${currentTitleLineHeight()};letter-spacing:${currentLetterSpacing};color:${color};font-weight:700;text-align:left;font-family:${fontFamily};`;
       }
 
       function articleTitleStyle(fontFamily = selectedFontStack, size = currentTitleSize, indent = currentIndent) {
-        return `margin:0 ${indent}px 24px;font-size:${size}px;line-height:1.35;letter-spacing:${DEFAULT_LETTER_SPACING};color:${BODY_COLOR};font-weight:700;text-align:left;font-family:${fontFamily};`;
+        return `margin:0 ${indent}px ${currentParagraphSpacing}px;font-size:${size}px;line-height:${currentTitleLineHeight()};letter-spacing:${currentLetterSpacing};color:${BODY_COLOR};font-weight:700;text-align:left;font-family:${fontFamily};`;
       }
 
       function emphasisStyle(fontFamily = selectedFontStack, color = currentAccentColor) {
-        return `font-size:${currentBodySize}px;line-height:1.8;letter-spacing:${DEFAULT_LETTER_SPACING};color:${color};font-weight:700;font-family:${fontFamily};`;
+        return `font-size:${currentBodySize}px;line-height:${currentLineHeight};letter-spacing:${currentLetterSpacing};color:${color};font-weight:700;font-family:${fontFamily};`;
       }
 
       function blueEmphasisStyle(fontFamily = selectedFontStack, color = currentAccentColor) {
-        return `font-size:${currentBodySize}px;line-height:1.8;letter-spacing:${DEFAULT_LETTER_SPACING};color:${color};font-weight:700;font-family:${fontFamily};`;
+        return `font-size:${currentBodySize}px;line-height:${currentLineHeight};letter-spacing:${currentLetterSpacing};color:${color};font-weight:700;font-family:${fontFamily};`;
       }
 
       function authorStyle(fontFamily = selectedFontStack, indent = currentIndent) {
-        return `margin:0 ${indent}px 24px;font-size:14px;line-height:1.6;letter-spacing:${DEFAULT_LETTER_SPACING};color:#888888;text-align:left;font-family:${fontFamily};`;
+        return `margin:0 ${indent}px ${currentParagraphSpacing}px;font-size:14px;line-height:${currentLineHeight};letter-spacing:${currentLetterSpacing};color:#888888;text-align:left;font-family:${fontFamily};`;
       }
 
       function introStyle(fontFamily = selectedFontStack, indent = currentIndent) {
@@ -2103,11 +2186,11 @@
       }
 
       function quoteStyle(fontFamily = selectedFontStack, indent = currentIndent) {
-        return `margin:0 ${indent}px 24px;padding:0 0 0 14px;border-left:3px solid ${currentAccentColor};font-size:${currentBodySize}px;line-height:1.9;letter-spacing:${DEFAULT_LETTER_SPACING};color:#666666;text-align:left;font-family:${fontFamily};`;
+        return `margin:0 ${indent}px ${currentParagraphSpacing}px;padding:0 0 0 14px;border-left:3px solid ${currentAccentColor};font-size:${currentBodySize}px;line-height:${currentLineHeight};letter-spacing:${currentLetterSpacing};color:#666666;text-align:left;font-family:${fontFamily};`;
       }
 
       function imageBlockStyle(indent = currentIndent) {
-        return `margin:0 ${indent}px 24px;padding:0;line-height:0;text-align:center;`;
+        return `margin:0 ${indent}px ${currentParagraphSpacing}px;padding:0;line-height:0;text-align:center;`;
       }
 
       function imageElementStyle() {
@@ -2911,7 +2994,7 @@
             block.setAttribute('style', titleStyle());
             block.textContent = '';
             const span = document.createElement('span');
-            span.setAttribute('style', `font-size:${currentTitleSize}px;line-height:1.35;letter-spacing:${DEFAULT_LETTER_SPACING};color:${currentTitleColor};font-weight:700;font-family:${selectedFontStack};`);
+            span.setAttribute('style', `font-size:${currentTitleSize}px;line-height:${currentTitleLineHeight()};letter-spacing:${currentLetterSpacing};color:${currentTitleColor};font-weight:700;font-family:${selectedFontStack};`);
             span.textContent = text;
             block.appendChild(span);
             counts.title += 1;
@@ -3041,7 +3124,7 @@
             numberLine.setAttribute(
               'style',
               `display:block;margin:0 0 ${style === 'chinese-box' ? 6 : 0}px;padding:0;` +
-              `font-size:${currentTitleSize}px;line-height:1.35;letter-spacing:${DEFAULT_LETTER_SPACING};` +
+              `font-size:${currentTitleSize}px;line-height:${currentTitleLineHeight()};letter-spacing:${currentLetterSpacing};` +
               `color:${currentTitleColor};font-weight:700;font-family:${selectedFontStack};`
             );
             numberLine.textContent = chineseNumber(index + 1);
@@ -3052,14 +3135,14 @@
                 'style',
                 `display:inline;width:auto;margin:0;padding:2px 6px;box-sizing:border-box;` +
                 `box-decoration-break:clone;-webkit-box-decoration-break:clone;` +
-                `font-size:${currentTitleSize}px;line-height:1.35;letter-spacing:${DEFAULT_LETTER_SPACING};` +
+                `font-size:${currentTitleSize}px;line-height:${currentTitleLineHeight()};letter-spacing:${currentLetterSpacing};` +
                 `background-color:${currentTitleColor};color:#ffffff;font-weight:700;font-family:${selectedFontStack};`
               );
             } else {
               titleLine.dataset.wechatTitlePart = 'title';
               titleLine.setAttribute(
                 'style',
-                `display:block;margin:0;padding:0;font-size:${currentTitleSize}px;line-height:1.35;letter-spacing:${DEFAULT_LETTER_SPACING};` +
+                `display:block;margin:0;padding:0;font-size:${currentTitleSize}px;line-height:${currentTitleLineHeight()};letter-spacing:${currentLetterSpacing};` +
                 `color:${currentTitleColor};font-weight:700;font-family:${selectedFontStack};`
               );
             }
@@ -3107,7 +3190,7 @@
             paragraph.dataset.titleBase = sourceBlock.dataset.titleBase || titleBaseFromBlock(sourceBlock);
             paragraph.setAttribute('style', titleStyle());
             const span = document.createElement('span');
-            span.setAttribute('style', `font-size:${currentTitleSize}px;line-height:1.35;letter-spacing:${DEFAULT_LETTER_SPACING};color:${currentTitleColor};font-weight:700;font-family:${selectedFontStack};`);
+            span.setAttribute('style', `font-size:${currentTitleSize}px;line-height:${currentTitleLineHeight()};letter-spacing:${currentLetterSpacing};color:${currentTitleColor};font-weight:700;font-family:${selectedFontStack};`);
             span.textContent = text;
             paragraph.appendChild(span);
             sourceBlock.replaceWith(paragraph);
@@ -3147,7 +3230,7 @@
             child.removeAttribute('size');
             child.style.fontSize = `${currentBodySize}px`;
             child.style.fontFamily = selectedFontStack;
-            child.style.letterSpacing = DEFAULT_LETTER_SPACING;
+            child.style.letterSpacing = currentLetterSpacing;
             child.style.color = currentAccentColor;
             child.style.fontWeight = '700';
           });
@@ -3222,6 +3305,49 @@
         document.execCommand('styleWithCSS', false, true);
         document.execCommand('fontName', false, selectedFontStack);
         updateOutput();
+      }
+
+      function applySpacingLevel(kind, level) {
+        if (!SPACING_LEVELS[kind]) return;
+        currentSpacingLevels[kind] = normalizeSpacingLevel(kind, level);
+        syncSpacingValues();
+        updateSpacingMenuState();
+
+        restoreEditorSelection();
+        const selection = window.getSelection();
+        const hasExplicitSelection = selection.rangeCount
+          && !selection.isCollapsed
+          && editor.contains(selection.anchorNode)
+          && editor.contains(selection.focusNode);
+        const blocks = hasExplicitSelection
+          ? blocksForRange(selection.getRangeAt(0))
+          : [...editor.children].filter((node) => node.matches('p, div, h1, h2, h3, h4'));
+
+        blocks.forEach((block) => {
+          const role = block.dataset.wechatRole;
+          const isTitle = role === 'chapter-title' || role === 'article-title';
+          const isImage = role === 'image' || block.querySelector('img');
+          if (kind === 'letter' && !isImage) {
+            block.style.letterSpacing = currentLetterSpacing;
+            block.querySelectorAll('*:not(img):not(br)').forEach((element) => {
+              element.style.letterSpacing = currentLetterSpacing;
+            });
+          }
+          if (kind === 'line' && !isImage) {
+            block.style.lineHeight = String(isTitle ? currentTitleLineHeight() : currentLineHeight);
+            block.querySelectorAll('[data-wechat-title-part]').forEach((element) => {
+              element.style.lineHeight = String(currentTitleLineHeight());
+            });
+            block.querySelectorAll('strong, b, mark, [data-wechat-role="emphasis"], [data-wechat-role="emphasis-blue"], [data-wechat-role="emphasis-color"]').forEach((element) => {
+              element.style.lineHeight = String(currentLineHeight);
+            });
+          }
+          if (kind === 'paragraph') block.style.marginBottom = `${currentParagraphSpacing}px`;
+        });
+
+        if (hasExplicitSelection && blocks.length) keepBlocksSelected(blocks);
+        updateOutput();
+        scheduleValidation();
       }
 
       function applyParagraphIndent(value) {
@@ -3583,6 +3709,32 @@
         const bodyAppearance = auditAppearance(bodyNodes);
         const emphasisAppearance = auditAppearance(emphasisNodes, true);
 
+        const textBlocks = blocks.filter((block) => block.dataset.wechatRole !== 'image' && !block.querySelector('img'));
+        const dominantLetterSpacing = Number(mode(textBlocks.map((block) => {
+          const style = getComputedStyle(block);
+          const fontSize = pxValue(style.fontSize) || 1;
+          return (pxValue(style.letterSpacing) / fontSize).toFixed(3);
+        }))) || 0;
+        const letterSpacingErrors = textBlocks.filter((block) => {
+          const style = getComputedStyle(block);
+          const fontSize = pxValue(style.fontSize) || 1;
+          return Math.abs((pxValue(style.letterSpacing) / fontSize) - dominantLetterSpacing) > 0.01;
+        });
+        const letterSpacingPass = letterSpacingErrors.length === 0;
+
+        const lineSpacingBlocks = textBlocks.filter((block) => !['chapter-title', 'article-title'].includes(block.dataset.wechatRole));
+        const dominantLineSpacing = Number(mode(lineSpacingBlocks.map((block) => {
+          const style = getComputedStyle(block);
+          const fontSize = pxValue(style.fontSize) || 1;
+          return (pxValue(style.lineHeight) / fontSize).toFixed(2);
+        }))) || 0;
+        const lineSpacingErrors = lineSpacingBlocks.filter((block) => {
+          const style = getComputedStyle(block);
+          const fontSize = pxValue(style.fontSize) || 1;
+          return Math.abs((pxValue(style.lineHeight) / fontSize) - dominantLineSpacing) > 0.02;
+        });
+        const lineSpacingPass = lineSpacingErrors.length === 0;
+
         const spacedBodies = blocks.filter((block) => block.dataset.wechatRole !== 'chapter-title');
         const dominantSpacing = Number(mode(spacedBodies.map((block) => pxValue(getComputedStyle(block).marginBottom).toFixed(2)))) || 0;
         const spacingErrors = spacedBodies.filter((block) => Math.abs(pxValue(getComputedStyle(block).marginBottom) - dominantSpacing) > 0.2);
@@ -3606,6 +3758,8 @@
           { label: '重点字字体与字号', detail: emphasisTypography.detail, pass: emphasisTypography.pass, nodes: [...emphasisTypography.sizeErrorNodes, ...emphasisTypography.fontErrorNodes], reason: '重点字体或字号属于少数格式' },
           { label: '重点字颜色与粗细', detail: emphasisAppearance.detail, pass: emphasisAppearance.pass, nodes: emphasisAppearance.errorNodes, reason: '重点颜色或粗细属于少数格式' },
           { label: '语义识别', detail: `全文标题 ${articleTitles.length} · 作者 ${authors.length} · 导语 ${intros.length}`, pass: true, nodes: [] },
+          { label: '字间距一致性', detail: `主流 ${dominantLetterSpacing.toFixed(2)}em · 偏差 ${letterSpacingErrors.length}`, pass: letterSpacingPass, nodes: letterSpacingErrors, reason: '字间距属于少数格式' },
+          { label: '行间距一致性', detail: `主流 ${dominantLineSpacing.toFixed(2)} · 偏差 ${lineSpacingErrors.length}`, pass: lineSpacingPass, nodes: lineSpacingErrors, reason: '行间距属于少数格式' },
           { label: '两端缩进一致性', detail: `主流 ${dominantIndentLeft}px / ${dominantIndentRight}px · 偏差 ${indentErrors.length}`, pass: indentPass, nodes: indentErrors, reason: '两端缩进属于少数格式' },
           { label: '段落间距一致性', detail: `主流 ${dominantSpacing}px · 偏差 ${spacingErrors.length}`, pass: spacingPass, nodes: spacingErrors, reason: '段落间距属于少数格式' }
         ];
@@ -3667,7 +3821,7 @@
       }
 
       function updateOutput() {
-        htmlOutput.value = `<section style="font-size:${currentBodySize}px;line-height:1.8;letter-spacing:${DEFAULT_LETTER_SPACING};color:${BODY_COLOR};text-align:left;word-break:break-word;font-family:${selectedFontStack};">\n${sanitizedEditorHtml()}\n</section>`;
+        htmlOutput.value = `<section style="font-size:${currentBodySize}px;line-height:${currentLineHeight};letter-spacing:${currentLetterSpacing};color:${BODY_COLOR};text-align:left;word-break:break-word;font-family:${selectedFontStack};">\n${sanitizedEditorHtml()}\n</section>`;
       }
 
       function copyRichText(feedbackButton = copyButton) {
@@ -4041,7 +4195,8 @@
           indent: currentIndent,
           titleNumberStyle: currentTitleNumberStyle,
           fontKey: selectedFontKey,
-          themeColor: currentAccentColor
+          themeColor: currentAccentColor,
+          spacing: { ...currentSpacingLevels }
         };
       }
 
@@ -4065,6 +4220,13 @@
         currentTitleNumberStyle = ['arabic', 'chinese', 'chinese-line', 'chinese-box', 'none'].includes(theme.titleNumberStyle) ? theme.titleNumberStyle : 'arabic';
         selectedFontKey = FONT_STACKS[theme.fontKey] ? theme.fontKey : 'system';
         selectedFontStack = FONT_STACKS[selectedFontKey];
+        currentSpacingLevels = {
+          letter: normalizeSpacingLevel('letter', theme.spacing?.letter),
+          line: normalizeSpacingLevel('line', theme.spacing?.line),
+          paragraph: normalizeSpacingLevel('paragraph', theme.spacing?.paragraph)
+        };
+        syncSpacingValues();
+        updateSpacingMenuState();
         setThemeColor(theme.themeColor || theme.accentColor || theme.titleColor || ORANGE);
 
         currentBodySizeLabel.textContent = `${currentBodySize}`;
@@ -4173,6 +4335,17 @@
         return choices.reduce((best, choice) => Math.abs(choice - value) < Math.abs(best - value) ? choice : best, choices[0]);
       }
 
+      function nearestSpacingLevel(kind, value) {
+        const numericValue = Number(value);
+        const entries = Object.entries(SPACING_LEVELS[kind] || {});
+        if (!entries.length || !Number.isFinite(numericValue)) return 'medium';
+        return entries.reduce((best, entry) => {
+          const entryValue = Number.parseFloat(entry[1]);
+          const bestValue = Number.parseFloat(best[1]);
+          return Math.abs(entryValue - numericValue) < Math.abs(bestValue - numericValue) ? entry : best;
+        }, entries[0])[0];
+      }
+
       function rgbToHex(value) {
         const parts = value.match(/\d+/g)?.slice(0, 3).map(Number);
         if (!parts || parts.length < 3) return value;
@@ -4209,6 +4382,7 @@
             text: element.innerText.trim(),
             size: pxValue(style.fontSize),
             lineHeight: pxValue(style.lineHeight),
+            letterSpacing: pxValue(style.letterSpacing),
             marginBottom: pxValue(style.marginBottom),
             marginLeft: pxValue(style.marginLeft),
             marginRight: pxValue(style.marginRight),
@@ -4224,6 +4398,9 @@
         const bilateralIndentRaw = Number(mode(bodyMetrics.map((item) => Math.round((item.marginLeft + item.marginRight) / 2)))) || 8;
         const bodyFont = mode(bodyMetrics.map((item) => item.fontFamily)) || FONT_STACKS.system;
         const titleColor = mode(titleMetrics.map((item) => item.color)) || ORANGE;
+        const bodyLetterSpacingRaw = Number(mode(bodyMetrics.map((item) => item.size ? (item.letterSpacing / item.size).toFixed(2) : ''))) || 0.1;
+        const averageLineHeight = Number(mode(bodyMetrics.map((item) => item.size ? (item.lineHeight / item.size).toFixed(2) : ''))) || 1.8;
+        const paragraphGap = Number(mode(bodyMetrics.map((item) => Math.round(item.marginBottom)))) || 24;
         const emphasisColors = [...styleSample.querySelectorAll('strong, b, [style*="color"]')]
           .map((element) => ({ color: rgbToHex(getComputedStyle(element).color), weight: Number(getComputedStyle(element).fontWeight) || 400 }))
           .filter((item) => item.weight >= 600 && item.color !== titleColor)
@@ -4237,13 +4414,16 @@
           indent: nearest(bilateralIndentRaw, [8, 16]),
           titleNumberStyle: currentTitleNumberStyle,
           fontKey: inferFontKey(bodyFont),
-          themeColor: mode(emphasisColors) || titleColor || ORANGE
+          themeColor: mode(emphasisColors) || titleColor || ORANGE,
+          spacing: {
+            letter: nearestSpacingLevel('letter', bodyLetterSpacingRaw),
+            line: nearestSpacingLevel('line', averageLineHeight),
+            paragraph: nearestSpacingLevel('paragraph', paragraphGap)
+          }
         };
         applyTheme(learnedTheme);
 
-        const averageLineHeight = mode(bodyMetrics.map((item) => item.size ? (item.lineHeight / item.size).toFixed(2) : '')) || '1.80';
-        const paragraphGap = mode(bodyMetrics.map((item) => Math.round(item.marginBottom))) || 24;
-        agentPromptText = `${AGENT_PROMPT}\n\n${AGENT_PROMPT_SENTENCE_RULE}\n\n从参考公众号样稿学习到的版式：正文约 ${bodySizeRaw}px，行高约 ${averageLineHeight}，段距约 ${paragraphGap}px，两端缩进约 ${learnedTheme.indent}px；章节标题约 ${titleSizeRaw}px；主题色 ${learnedTheme.themeColor}。请按这些视觉层级判断版序，但仍只返回上述 JSON，不要返回 HTML。`;
+        agentPromptText = `${AGENT_PROMPT}\n\n${AGENT_PROMPT_SENTENCE_RULE}\n\n从参考公众号样稿学习到的版式：正文约 ${bodySizeRaw}px，字距约 ${bodyLetterSpacingRaw}em，行高约 ${averageLineHeight}，段距约 ${paragraphGap}px，两端缩进约 ${learnedTheme.indent}px；章节标题约 ${titleSizeRaw}px；主题色 ${learnedTheme.themeColor}。请按这些视觉层级判断版序，但仍只返回上述 JSON，不要返回 HTML。`;
         lastValidAgentPrompt = agentPromptText;
         agentPromptEditor.value = agentPromptText;
         learnStyleStatus.textContent = `正文 ${bodySizeRaw}px · 标题 ${titleSizeRaw}px · 缩进 ${learnedTheme.indent}px`;
@@ -4560,6 +4740,15 @@
         });
       });
 
+      document.querySelectorAll('[data-spacing-kind][data-spacing-level]').forEach((button) => {
+        button.addEventListener('mousedown', (event) => event.preventDefault());
+        button.addEventListener('click', () => {
+          restoreEditorSelection();
+          applySpacingLevel(button.dataset.spacingKind, button.dataset.spacingLevel);
+          document.getElementById('spacing-menu').removeAttribute('open');
+        });
+      });
+
       document.querySelectorAll('[data-paragraph-indent]').forEach((button) => {
         button.addEventListener('mousedown', (event) => event.preventDefault());
         button.addEventListener('click', () => {
@@ -4613,6 +4802,7 @@
 
       applyAppearance(initialAppearance());
       setThemeColor(DEFAULT_THEME_COLOR);
+      updateSpacingMenuState();
       installEditorResizer();
       renderThemeControls();
       restoreSample();
