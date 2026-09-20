@@ -890,7 +890,7 @@
       color: var(--orange);
       box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--orange) 12%, transparent);
     }
-    .title-number-menu .tool-menu-popover { display: grid; grid-template-columns: 1fr; }
+    .title-number-menu .tool-menu-popover { display: grid; grid-template-columns: repeat(2, 1fr); }
     .title-number-menu .tool-menu-popover button { min-width: 98px; text-align: left; }
     .title-theme-dot {
       display: inline-block;
@@ -1510,7 +1510,7 @@
 <body>
   <main class="app-shell">
     <header class="topbar">
-      <p class="maker-meta">制作人：松壑 <span>v-1.0.4</span></p>
+      <p class="maker-meta">制作人：松壑 <span>v-1.0.5</span></p>
       <div>
         <p class="eyebrow">Formatting Lab</p>
         <div class="brand-title-row">
@@ -1600,6 +1600,7 @@
           <details class="tool-menu size-tool" id="title-size-menu">
             <summary aria-label="标题字号" data-tooltip="设置框选内容为章节标题">标<span id="current-title-size" class="visually-hidden">32</span></summary>
             <div class="tool-menu-popover">
+              <button type="button" data-title-size="22">22</button>
               <button type="button" data-title-size="24">24</button>
               <button type="button" data-title-size="32">32</button>
             </div>
@@ -1611,6 +1612,9 @@
               <button type="button" data-title-number="chinese">一、二、三</button>
               <button type="button" data-title-number="chinese-line">一 ↵ 标题</button>
               <button type="button" data-title-number="chinese-box" aria-label="中文序号换行，主题色标题框">一 ↵ <span class="title-theme-dot" aria-hidden="true"></span></button>
+              <button type="button" data-title-number="arabic-zero">01. 02. 03.</button>
+              <button type="button" data-title-number="chinese-parenthesized">（一）（二）（三）</button>
+              <button type="button" data-title-number="chapter">第一章 第二章</button>
               <button type="button" data-title-number="none">无序号</button>
             </div>
           </details>
@@ -1849,7 +1853,20 @@
       let currentParagraphSpacing = SPACING_LEVELS.paragraph.medium;
       let editingThemeId = null;
       let validationTimer = null;
+      let validationIdleHandle = null;
+      let outputTimer = null;
+      let outputIdleHandle = null;
       const HISTORY_LIMIT = 10;
+      const HISTORY_MEMORY_LIMIT = 10 * 1024 * 1024;
+      const LARGE_DOCUMENT_CHARS = 30000;
+      const VERY_LARGE_DOCUMENT_CHARS = 100000;
+      const LARGE_DOCUMENT_BLOCKS = 260;
+      const VERY_LARGE_DOCUMENT_BLOCKS = 800;
+      const IMAGE_MAX_WIDTH = 1800;
+      const IMAGE_MAX_HEIGHT = 2600;
+      const IMAGE_MAX_PIXELS = 4200000;
+      const IMAGE_KEEP_ORIGINAL_BYTES = 900000;
+      const IMAGE_PNG_PRESERVE_BYTES = 1500000;
       let undoStack = [];
       let redoStack = [];
       let lastHistoryHtml = '';
@@ -1868,7 +1885,8 @@
       const EDITOR_WIDTH_STORAGE_KEY = 'wechat-workbench-editor-width-v1';
       const SAMPLE_DISMISSED_STORAGE_KEY = 'wechat-workbench-guidance-sample-dismissed-v1';
       const FONT_LABELS = { system: '默认', heiti: '黑体', songti: '宋体', kaiti: '楷体' };
-      const TITLE_NUMBER_LABELS = { arabic: '序', chinese: '序', 'chinese-line': '序', 'chinese-box': '序', none: '序' };
+      const TITLE_NUMBER_STYLES = ['arabic', 'chinese', 'chinese-line', 'chinese-box', 'arabic-zero', 'chinese-parenthesized', 'chapter', 'none'];
+      const TITLE_NUMBER_LABELS = Object.fromEntries(TITLE_NUMBER_STYLES.map((style) => [style, '序']));
       const APPEARANCE_MODES = [
         { id: 'system', label: '系统', icon: '◐' },
         { id: 'light', label: '白天', icon: '☀' },
@@ -1886,7 +1904,7 @@
       let lastValidAgentPrompt = agentPromptText;
       agentPromptEditor.value = agentPromptText;
 
-      const titlePattern = /^(?:第[一二三四五六七八九十百零\d]+(?:章|节|部分|篇)|[一二三四五六七八九十百零\d]+[\.．、])\s*\S+/;
+      const titlePattern = /^(?:第[一二三四五六七八九十百零\d]+(?:章|节|部分|篇)|[一二三四五六七八九十百零\d]+[\.．、]|[（(](?:[一二三四五六七八九十百零]+|\d{1,3})[）)])\s*\S+/;
       const authorPattern = /^(?:作者|撰文|文|来源|by)\s*[：:／/]\s*\S+/i;
       const basicAuthorPattern = /^(?:作者|撰文|执笔|文|by)\s*(?:[：:／/]\s*|\s+)\S+/i;
       const articleMetadataPattern = /^(?:作者|撰文|执笔|文|来源|编辑|责任编辑|发布日期|发布时间|日期|时间|by)\s*(?:[：:／/]\s*|\s+)\S+/i;
@@ -2378,6 +2396,7 @@
         clone.removeAttribute('aria-label');
         clone.querySelectorAll('[data-guidance-marker]').forEach((node) => node.remove());
         clone.querySelectorAll('[data-image-selected]').forEach((node) => node.removeAttribute('data-image-selected'));
+        clone.querySelectorAll('[data-wechat-original-src]').forEach((node) => node.removeAttribute('data-wechat-original-src'));
         clone.querySelectorAll('[data-format-warning]').forEach((node) => node.removeAttribute('data-format-warning'));
         return clone;
       }
@@ -2394,6 +2413,38 @@
         updateHistoryButtons();
       }
 
+      function documentWorkload() {
+        const characters = editor.textContent?.length || 0;
+        const blocks = editor.childElementCount;
+        const veryLarge = characters >= VERY_LARGE_DOCUMENT_CHARS || blocks >= VERY_LARGE_DOCUMENT_BLOCKS;
+        const large = veryLarge || characters >= LARGE_DOCUMENT_CHARS || blocks >= LARGE_DOCUMENT_BLOCKS;
+        return { characters, blocks, large, veryLarge };
+      }
+
+      function idleDelay(normalDelay, largeDelay, veryLargeDelay) {
+        const workload = documentWorkload();
+        return workload.veryLarge ? veryLargeDelay : workload.large ? largeDelay : normalDelay;
+      }
+
+      function runWhenBrowserIdle(callback, timeout = 1200) {
+        if ('requestIdleCallback' in window) {
+          return { type: 'idle', id: window.requestIdleCallback(callback, { timeout }) };
+        }
+        return { type: 'timer', id: window.setTimeout(callback, 0) };
+      }
+
+      function cancelIdleTask(task) {
+        if (!task) return;
+        if (task.type === 'idle' && 'cancelIdleCallback' in window) window.cancelIdleCallback(task.id);
+        else window.clearTimeout(task.id);
+      }
+
+      function trimHistoryMemory() {
+        const totalSize = () => [...undoStack, ...redoStack].reduce((sum, html) => sum + html.length, 0);
+        while (undoStack.length > 1 && totalSize() > HISTORY_MEMORY_LIMIT) undoStack.shift();
+        while (redoStack.length > 1 && totalSize() > HISTORY_MEMORY_LIMIT) redoStack.shift();
+      }
+
       function commitEditorHistory() {
         window.clearTimeout(historyTimer);
         const currentHtml = sanitizedEditorHtml();
@@ -2406,13 +2457,14 @@
         undoStack.push(lastHistoryHtml);
         if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
         redoStack = [];
+        trimHistoryMemory();
         lastHistoryHtml = currentHtml;
         updateHistoryButtons();
       }
 
       function scheduleEditorHistory() {
         window.clearTimeout(historyTimer);
-        historyTimer = window.setTimeout(commitEditorHistory, 180);
+        historyTimer = window.setTimeout(commitEditorHistory, idleDelay(300, 900, 1600));
       }
 
       function applyHistorySnapshot(html) {
@@ -2434,6 +2486,7 @@
         const previousHtml = undoStack.pop();
         redoStack.push(currentHtml);
         if (redoStack.length > HISTORY_LIMIT) redoStack.shift();
+        trimHistoryMemory();
         applyHistorySnapshot(previousHtml);
       }
 
@@ -2444,6 +2497,7 @@
         const nextHtml = redoStack.pop();
         undoStack.push(currentHtml);
         if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
+        trimHistoryMemory();
         applyHistorySnapshot(nextHtml);
       }
 
@@ -2800,17 +2854,121 @@
         });
       }
 
+      function loadImageFromBlob(blob) {
+        return new Promise((resolve, reject) => {
+          const objectUrl = URL.createObjectURL(blob);
+          const image = new Image();
+          const finish = () => URL.revokeObjectURL(objectUrl);
+          image.onload = () => {
+            finish();
+            resolve(image);
+          };
+          image.onerror = () => {
+            finish();
+            reject(new Error('图片解码失败'));
+          };
+          image.src = objectUrl;
+        });
+      }
+
+      async function optimizeImageBlob(blob) {
+        const type = String(blob?.type || '').toLowerCase();
+        if (!blob || type === 'image/gif' || type === 'image/svg+xml') return blob;
+        const image = await loadImageFromBlob(blob);
+        const sourceWidth = image.naturalWidth || image.width;
+        const sourceHeight = image.naturalHeight || image.height;
+        if (!sourceWidth || !sourceHeight) return blob;
+
+        const dimensionScale = Math.min(1, IMAGE_MAX_WIDTH / sourceWidth, IMAGE_MAX_HEIGHT / sourceHeight);
+        const pixelScale = Math.min(1, Math.sqrt(IMAGE_MAX_PIXELS / (sourceWidth * sourceHeight)));
+        const scale = Math.min(dimensionScale, pixelScale);
+        if (scale === 1 && blob.size <= IMAGE_KEEP_ORIGINAL_BYTES) return blob;
+
+        const width = Math.max(1, Math.round(sourceWidth * scale));
+        const height = Math.max(1, Math.round(sourceHeight * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const preservePng = type === 'image/png' && blob.size <= IMAGE_PNG_PRESERVE_BYTES;
+        const context = canvas.getContext('2d', { alpha: preservePng });
+        if (!context) return blob;
+        if (!preservePng) {
+          context.fillStyle = '#ffffff';
+          context.fillRect(0, 0, width, height);
+        }
+        context.drawImage(image, 0, 0, width, height);
+        const outputType = preservePng ? 'image/png' : 'image/jpeg';
+        const optimized = await new Promise((resolve, reject) => {
+          canvas.toBlob((value) => value ? resolve(value) : reject(new Error('图片压缩失败')), outputType, 0.88);
+        });
+        return optimized.size < blob.size ? optimized : blob;
+      }
+
+      async function imageBlobAsEmbeddedUrl(blob) {
+        return fileAsDataUrl(await optimizeImageBlob(blob));
+      }
+
+      async function fetchImageBlob(source, timeout = 2800) {
+        const controller = new AbortController();
+        const timer = window.setTimeout(() => controller.abort(), timeout);
+        try {
+          const response = await fetch(source, { signal: controller.signal });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const blob = await response.blob();
+          if (!blob.type.startsWith('image/')) throw new Error('非图片响应');
+          return blob;
+        } finally {
+          window.clearTimeout(timer);
+        }
+      }
+
+      async function mapWithConcurrency(items, limit, worker) {
+        let cursor = 0;
+        const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+          while (cursor < items.length) {
+            const index = cursor;
+            cursor += 1;
+            await worker(items[index], index);
+          }
+        });
+        await Promise.all(workers);
+      }
+
+      async function hydrateEditorImages(root = editor) {
+        const images = [...root.querySelectorAll('img')].filter((image) => {
+          const source = image.getAttribute('src') || image.getAttribute('data-src') || '';
+          if (!source) return false;
+          if (source.startsWith('data:')) return source.length > IMAGE_KEEP_ORIGINAL_BYTES * 1.45;
+          return true;
+        });
+        let embedded = 0;
+        let preserved = 0;
+        await mapWithConcurrency(images, 3, async (image) => {
+          const source = image.getAttribute('src') || image.getAttribute('data-src') || '';
+          try {
+            image.src = await imageBlobAsEmbeddedUrl(await fetchImageBlob(source));
+            image.removeAttribute('data-src');
+            embedded += 1;
+          } catch {
+            if (!image.getAttribute('src') && source) image.setAttribute('src', source);
+            preserved += 1;
+          }
+        });
+        normalizeEditorImages();
+        return { total: images.length, embedded, preserved };
+      }
+
       async function insertImageFiles(files) {
         const images = [...files].filter((file) => file?.type?.startsWith('image/'));
         if (!images.length) return 0;
         dismissGuidanceSample();
         let anchor = currentImageInsertionAnchor();
         for (const [index, file] of images.entries()) {
-          const source = await fileAsDataUrl(file);
+          const source = await imageBlobAsEmbeddedUrl(file);
           anchor = insertCenteredImage(source, file.name || `粘贴图片 ${index + 1}`, anchor);
         }
         rememberOriginalArticle(false);
-        updateOutput();
+        scheduleOutputUpdate();
         scheduleValidation();
         scheduleEditorHistory();
         return images.length;
@@ -3149,16 +3307,17 @@
             titleLine.textContent = base;
             block.replaceChildren(numberLine, titleLine);
           } else {
-            const nextText = style === 'chinese'
-              ? `${chineseNumber(index + 1)}、${base}`
-              : style === 'none'
-                ? base
-                : `${index + 1}. ${base}`;
+            let nextText = `${index + 1}. ${base}`;
+            if (style === 'chinese') nextText = `${chineseNumber(index + 1)}、${base}`;
+            if (style === 'arabic-zero') nextText = `${String(index + 1).padStart(2, '0')}. ${base}`;
+            if (style === 'chinese-parenthesized') nextText = `（${chineseNumber(index + 1)}）${base}`;
+            if (style === 'chapter') nextText = `第${chineseNumber(index + 1)}章 ${base}`;
+            if (style === 'none') nextText = base;
             block.textContent = nextText;
           }
           block.setAttribute('style', titleStyle(block.style.fontFamily || selectedFontStack));
         });
-        currentTitleNumberStyle = ['arabic', 'chinese', 'chinese-line', 'chinese-box', 'none'].includes(style) ? style : 'arabic';
+        currentTitleNumberStyle = TITLE_NUMBER_STYLES.includes(style) ? style : 'arabic';
         currentTitleNumberLabel.textContent = TITLE_NUMBER_LABELS[currentTitleNumberStyle];
         if (shouldUpdate) updateOutput();
       }
@@ -3688,7 +3847,15 @@
         markedNodes[0].scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
       }
 
+      function cancelScheduledValidation() {
+        window.clearTimeout(validationTimer);
+        validationTimer = null;
+        cancelIdleTask(validationIdleHandle);
+        validationIdleHandle = null;
+      }
+
       function validateFormat() {
+        cancelScheduledValidation();
         clearFormatWarnings();
         const blocks = [...editor.children].filter((block) => !block.hasAttribute('data-guidance-marker'));
         const titles = blocks.filter((block) => block.dataset.wechatRole === 'chapter-title');
@@ -3773,12 +3940,16 @@
       }
 
       function scheduleValidation() {
-        window.clearTimeout(validationTimer);
+        cancelScheduledValidation();
+        const workload = documentWorkload();
         status.className = 'status';
-        status.innerHTML = '<span class="status-dot"></span><span>正在实时检查……</span>';
+        status.innerHTML = `<span class="status-dot"></span><span>${workload.large ? '长文模式：空闲时检查……' : '正在实时检查……'}</span>`;
         mobileCheckState.className = 'mobile-check-state';
-        mobileCheckState.textContent = '正在实时检查……';
-        validationTimer = window.setTimeout(validateFormat, 180);
+        mobileCheckState.textContent = workload.large ? '长文空闲检查中' : '正在实时检查……';
+        validationTimer = window.setTimeout(() => {
+          validationTimer = null;
+          validationIdleHandle = runWhenBrowserIdle(validateFormat, workload.veryLarge ? 2400 : 1200);
+        }, workload.veryLarge ? 1600 : workload.large ? 850 : 240);
       }
 
       function renderChecks(results) {
@@ -3821,13 +3992,50 @@
       }
 
       function updateOutput() {
+        window.clearTimeout(outputTimer);
+        outputTimer = null;
+        cancelIdleTask(outputIdleHandle);
+        outputIdleHandle = null;
         htmlOutput.value = `<section style="font-size:${currentBodySize}px;line-height:${currentLineHeight};letter-spacing:${currentLetterSpacing};color:${BODY_COLOR};text-align:left;word-break:break-word;font-family:${selectedFontStack};">\n${sanitizedEditorHtml()}\n</section>`;
       }
 
-      function copyRichText(feedbackButton = copyButton) {
+      function scheduleOutputUpdate() {
+        window.clearTimeout(outputTimer);
+        cancelIdleTask(outputIdleHandle);
+        const workload = documentWorkload();
+        outputTimer = window.setTimeout(() => {
+          outputTimer = null;
+          outputIdleHandle = runWhenBrowserIdle(updateOutput, workload.veryLarge ? 2200 : 1000);
+        }, workload.veryLarge ? 1400 : workload.large ? 650 : 180);
+      }
+
+      async function prepareCloneImagesForClipboard(clone) {
+        const images = [...clone.querySelectorAll('img')];
+        let embedded = 0;
+        let preserved = 0;
+        await mapWithConcurrency(images, 3, async (image) => {
+          image.setAttribute('style', imageElementStyle());
+          image.removeAttribute('data-image-selected');
+          const source = image.getAttribute('src') || image.getAttribute('data-src') || '';
+          if (!source) return;
+          if (source.startsWith('data:')) {
+            embedded += 1;
+            return;
+          }
+          try {
+            image.src = await imageBlobAsEmbeddedUrl(await fetchImageBlob(source));
+            image.removeAttribute('data-src');
+            embedded += 1;
+          } catch {
+            preserved += 1;
+          }
+        });
+        return { total: images.length, embedded, preserved };
+      }
+
+      function legacyCopyStage(cleanClone) {
         normalizeEditorImages();
         const copyStage = document.createElement('div');
-        const cleanClone = sanitizedEditorClone();
         copyStage.setAttribute('style', 'position:fixed;left:-10000px;top:0;width:620px;background:#fff;pointer-events:none;');
         copyStage.append(...cleanClone.childNodes);
         document.body.appendChild(copyStage);
@@ -3839,9 +4047,40 @@
         const copied = document.execCommand('copy');
         selection.removeAllRanges();
         copyStage.remove();
+        return copied;
+      }
+
+      async function copyRichText(feedbackButton = copyButton) {
+        normalizeEditorImages();
+        const cleanClone = sanitizedEditorClone();
+        const imageReport = await prepareCloneImagesForClipboard(cleanClone);
+        const richHtml = cleanClone.innerHTML.trim();
+        const plainText = cleanClone.textContent.trim();
+        let copied = false;
+        if (navigator.clipboard?.write && typeof ClipboardItem !== 'undefined') {
+          try {
+            await navigator.clipboard.write([new ClipboardItem({
+              'text/html': new Blob([richHtml], { type: 'text/html' }),
+              'text/plain': new Blob([plainText], { type: 'text/plain' })
+            })]);
+            copied = true;
+          } catch {
+            copied = false;
+          }
+        }
+        if (!copied) copied = legacyCopyStage(cleanClone);
         const originalText = feedbackButton.textContent;
-        feedbackButton.textContent = copied ? '已复制' : '复制失败';
+        feedbackButton.textContent = copied
+          ? imageReport.total
+            ? `已复制 · ${imageReport.total} 图`
+            : '已复制'
+          : '复制失败';
+        if (copied && imageReport.preserved) {
+          status.className = 'status warning';
+          status.innerHTML = `<span class="status-dot"></span><span>${imageReport.embedded} 张图片已内嵌，${imageReport.preserved} 张保留原链接</span>`;
+        }
         window.setTimeout(() => { feedbackButton.textContent = originalText; }, 2200);
+        return copied;
       }
 
       function extractAgentJsonCandidate(value) {
@@ -4217,7 +4456,7 @@
         currentBodySize = Number(theme.bodySize) || 16;
         currentTitleSize = Number(theme.titleSize) || 32;
         currentIndent = [8, 16].includes(Number(theme.indent)) ? Number(theme.indent) : 8;
-        currentTitleNumberStyle = ['arabic', 'chinese', 'chinese-line', 'chinese-box', 'none'].includes(theme.titleNumberStyle) ? theme.titleNumberStyle : 'arabic';
+        currentTitleNumberStyle = TITLE_NUMBER_STYLES.includes(theme.titleNumberStyle) ? theme.titleNumberStyle : 'arabic';
         selectedFontKey = FONT_STACKS[theme.fontKey] ? theme.fontKey : 'system';
         selectedFontStack = FONT_STACKS[selectedFontKey];
         currentSpacingLevels = {
@@ -4410,7 +4649,7 @@
           id: 'learned',
           name: '剪贴板样稿',
           bodySize: nearest(bodySizeRaw, [14, 15, 16]),
-          titleSize: nearest(titleSizeRaw, [24, 32]),
+          titleSize: nearest(titleSizeRaw, [22, 24, 32]),
           indent: nearest(bilateralIndentRaw, [8, 16]),
           titleNumberStyle: currentTitleNumberStyle,
           fontKey: inferFontKey(bodyFont),
@@ -4629,16 +4868,18 @@
       editor.addEventListener('input', () => {
         dismissGuidanceSample();
         detectTopAuthorLine();
-        syncThemeEmphasis();
-        updateOutput();
+        scheduleOutputUpdate();
         scheduleValidation();
       });
       editor.addEventListener('paste', (event) => {
+        const richClipboardHtml = event.clipboardData?.getData('text/html') || '';
+        const plainClipboardText = event.clipboardData?.getData('text/plain') || '';
         const imageFiles = [...(event.clipboardData?.items || [])]
           .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
           .map((item) => item.getAsFile())
           .filter(Boolean);
-        if (imageFiles.length) {
+        const hasArticleContent = Boolean(plainClipboardText.trim() || richClipboardHtml.replace(/<img\b[^>]*>/gi, '').replace(/<[^>]+>/g, '').trim());
+        if (imageFiles.length && !hasArticleContent) {
           event.preventDefault();
           insertImageFiles(imageFiles).catch(() => {
             status.className = 'status warning';
@@ -4646,13 +4887,25 @@
           });
           return;
         }
+        const imageCountBeforePaste = editor.querySelectorAll('img').length;
         dismissGuidanceSample();
-        window.setTimeout(() => {
+        window.setTimeout(async () => {
           removeEmptyArticleBlocks();
           normalizeEditorImages();
+          if (imageFiles.length && editor.querySelectorAll('img').length === imageCountBeforePaste) {
+            await insertImageFiles(imageFiles);
+          }
+          const imageReport = await hydrateEditorImages();
           detectTopAuthorLine();
           rememberOriginalArticle(false);
-          updateOutput();
+          scheduleOutputUpdate();
+          scheduleEditorHistory();
+          if (imageReport.total) {
+            status.className = imageReport.preserved ? 'status warning' : 'status';
+            status.innerHTML = imageReport.preserved
+              ? `<span class="status-dot"></span><span>${imageReport.embedded} 张图片已内嵌，${imageReport.preserved} 张保留原链接</span>`
+              : `<span class="status-dot"></span><span>${imageReport.embedded} 张图片已优化并内嵌</span>`;
+          }
         }, 0);
       });
       editor.addEventListener('keydown', (event) => {
