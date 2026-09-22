@@ -29,6 +29,8 @@ jobs:
           cp wechat-style-prototype/index.html _site/index.html
           cp wechat-style-prototype/mobile.html _site/mobile.html
           cp wechat-style-prototype/mobile-preview.html _site/mobile-preview.html
+          cp wechat-style-prototype/media-library.js _site/media-library.js
+          cp -R wechat-style-prototype/vendor _site/vendor
           touch _site/.nojekyll
       - name: Configure Pages
         uses: actions/configure-pages@v5

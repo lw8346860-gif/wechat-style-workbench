@@ -1121,6 +1121,12 @@
       outline-offset: 3px;
       border-radius: 2px;
     }
+    .editor-page img[data-image-missing] { min-width: 180px; min-height: 70px; outline: 1px dashed #b48a49; }
+    .editor-intake-note { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:6px 12px; color:var(--muted); font-size:11px; }
+    .editor-intake-note button { padding:2px 7px; font-size:11px; }
+    #media-status { flex:1; min-width:140px; }
+    #media-status.warning { color:#a46521; }
+    .editor-page.drag-active { outline:2px dashed var(--orange); outline-offset:-4px; }
     .editor-page [data-format-warning] {
       background-color: rgba(255, 181, 111, .12);
       text-decoration-line: underline;
@@ -1510,7 +1516,7 @@
 <body>
   <main class="app-shell">
     <header class="topbar">
-      <p class="maker-meta">制作人：松壑 <span>v-1.0.5</span></p>
+      <p class="maker-meta">制作人：松壑 <span>v-1.0.6</span></p>
       <div>
         <p class="eyebrow">Formatting Lab</p>
         <div class="brand-title-row">
@@ -1690,7 +1696,11 @@
           <button class="icon-button history-button" type="button" data-command="redo" aria-label="重做" data-tooltip="重做一步">↷</button>
           <span id="mobile-check-state" class="mobile-check-state" aria-live="polite">实时检查已开启</span>
         </nav>
-
+        <div class="editor-intake-note">
+          <span id="media-status" role="status" aria-live="polite">可从 Word 全选复制粘贴，图片保留原始数据</span>
+          <button id="import-word" type="button" title="也可以将 DOCX 拖入正文">导入 Word</button>
+          <input id="word-file" type="file" accept=".docx" hidden>
+        </div>
         <div class="editor-wrap">
           <div id="editor-resize-shell" class="editor-resize-shell">
             <div class="editor-resize-handle left" data-resize-edge="left" role="separator" aria-orientation="vertical" aria-label="拖动调整编辑区宽度" tabindex="0"></div>
@@ -1723,7 +1733,7 @@
         <section class="panel">
           <h2>微信兼容 HTML</h2>
           <textarea id="html-output" class="html-output" readonly aria-label="微信兼容 HTML 输出"></textarea>
-          <p class="hint">用于核对内联样式；发布时复制下方富文本。</p>
+          <p class="hint">此处仅预览样式；下方复制会自动带上原图。文章和图片只在本页临时保留。</p>
           <button id="copy-rich" class="primary" type="button" style="width:100%;margin-top:12px;">复制富文本样稿</button>
         </section>
       </aside>
@@ -1770,6 +1780,8 @@
     <p><strong>“复制富文本样稿”带走的是微信可识别的内联格式，新手提示、检查标记和界面控件都不会进入剪贴板。</strong></p>
   </template>
 
+  <script src="vendor/purify.min.js"></script>
+  <script src="media-library.js"></script>
   <script>
     (() => {
       const ORANGE = '#ff6827';
@@ -1862,14 +1874,16 @@
       const VERY_LARGE_DOCUMENT_CHARS = 100000;
       const LARGE_DOCUMENT_BLOCKS = 260;
       const VERY_LARGE_DOCUMENT_BLOCKS = 800;
-      const IMAGE_MAX_WIDTH = 1800;
-      const IMAGE_MAX_HEIGHT = 2600;
-      const IMAGE_MAX_PIXELS = 4200000;
-      const IMAGE_KEEP_ORIGINAL_BYTES = 900000;
-      const IMAGE_PNG_PRESERVE_BYTES = 1500000;
+      const mediaStatus = document.getElementById('media-status');
+      const imageLibrary = new WorkbenchMedia.ImageLibrary(asset => {
+        editor.querySelectorAll(`img[data-image-id="${asset.id}"]`).forEach(image => imageLibrary.bind(image, asset));
+      });
+      let pendingImports = 0;
+      let importQueue = Promise.resolve();
+      let copyInProgress = false;
       let undoStack = [];
       let redoStack = [];
-      let lastHistoryHtml = '';
+      let lastHistoryHtml = null;
       let historyTimer = null;
       let originalArticleHtml = '';
       let hasUserOriginal = false;
@@ -2402,7 +2416,22 @@
       }
 
       function sanitizedEditorHtml() {
-        return sanitizedEditorClone().innerHTML.trim();
+        const clone = sanitizedEditorClone();
+        clone.querySelectorAll('img[data-image-id]').forEach(image => {
+          image.setAttribute('src', 'about:blank');
+          image.removeAttribute('loading');
+          image.removeAttribute('decoding');
+        });
+        const walker = document.createTreeWalker(clone, NodeFilter.SHOW_COMMENT);
+        const markers = [];
+        while (walker.nextNode()) if (walker.currentNode.data === 'article-import') markers.push(walker.currentNode);
+        markers.forEach(node => node.remove());
+        return clone.innerHTML.trim();
+      }
+
+      function collectUnusedImages() {
+        if (pendingImports || copyInProgress) return;
+        imageLibrary.collect([sanitizedEditorHtml(), lastHistoryHtml || '', originalArticleHtml, ...undoStack, ...redoStack]);
       }
 
       function resetEditorHistory() {
@@ -2411,6 +2440,7 @@
         redoStack = [];
         lastHistoryHtml = sanitizedEditorHtml();
         updateHistoryButtons();
+        collectUnusedImages();
       }
 
       function documentWorkload() {
@@ -2448,7 +2478,7 @@
       function commitEditorHistory() {
         window.clearTimeout(historyTimer);
         const currentHtml = sanitizedEditorHtml();
-        if (!lastHistoryHtml) {
+        if (lastHistoryHtml === null) {
           lastHistoryHtml = currentHtml;
           updateHistoryButtons();
           return;
@@ -2460,9 +2490,11 @@
         trimHistoryMemory();
         lastHistoryHtml = currentHtml;
         updateHistoryButtons();
+        collectUnusedImages();
       }
 
       function scheduleEditorHistory() {
+        if (pendingImports) return;
         window.clearTimeout(historyTimer);
         historyTimer = window.setTimeout(commitEditorHistory, idleDelay(300, 900, 1600));
       }
@@ -2473,6 +2505,7 @@
         lastToolbarTarget = null;
         lastToolbarBlocks = [];
         editor.innerHTML = html;
+        imageLibrary.restore(editor);
         lastHistoryHtml = html;
         updateOutput();
         scheduleValidation();
@@ -2515,9 +2548,11 @@
         lastToolbarTarget = null;
         lastToolbarBlocks = [];
         editor.innerHTML = originalArticleHtml;
+        imageLibrary.restore(editor);
         updateOutput();
         renderChecks(null);
         resetEditorHistory();
+        collectUnusedImages();
       }
 
       function guidanceSampleWasDismissed() {
@@ -2776,6 +2811,32 @@
           block.replaceWith(paragraph);
         });
 
+        // Word often puts an inline drawing and its caption in the same paragraph.
+        // Separate images before title detection, which rewrites heading text.
+        [...editor.children].forEach(block => {
+          if (!block.matches('p,div,h1,h2,h3,h4,figure')) return;
+          const images = [...block.querySelectorAll('img')];
+          if (!images.length || (!block.textContent.trim() && images.length === 1)) return;
+          const fragment = document.createDocumentFragment();
+          for (const image of images) {
+            const before = document.createRange();
+            before.setStart(block, 0);
+            before.setEndBefore(image);
+            const text = block.cloneNode(false);
+            text.append(before.extractContents());
+            if (text.textContent.trim()) fragment.append(text);
+            const paragraph = document.createElement('p');
+            paragraph.dataset.wechatRole = 'image';
+            paragraph.append(image);
+            fragment.append(paragraph);
+          }
+          if (block.textContent.trim()) {
+            const tail = block.cloneNode(false);
+            tail.append(...block.childNodes);
+            fragment.append(tail);
+          }
+          block.replaceWith(fragment);
+        });
         removeEmptyArticleBlocks();
         normalizeEditorImages();
       }
@@ -2808,186 +2869,241 @@
         });
       }
 
-      function currentImageInsertionAnchor() {
-        const selection = window.getSelection();
-        let node = selection?.anchorNode;
-        if (node?.nodeType === Node.TEXT_NODE) node = node.parentElement;
-        const selectedBlock = node?.closest?.('p, div, h1, h2, h3, h4, figure');
-        if (selectedBlock && selectedBlock.parentElement === editor) return selectedBlock;
-        const remembered = lastToolbarTarget?.isConnected && editor.contains(lastToolbarTarget) ? lastToolbarTarget : null;
-        return remembered?.parentElement === editor ? remembered : editor.lastElementChild;
+
+      const fileAsDataUrl = WorkbenchMedia.dataUrl;
+
+      async function fetchImageBlob(source, timeout = 3500) {
+        if (!/^(data:image\/|blob:|https?:\/\/)/i.test(source)) throw new Error('浏览器未提供图片文件');
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeout);
+        try {
+          const response = await fetch(source, { signal: controller.signal, credentials: 'omit' });
+          if (!response.ok) throw new Error('图片读取失败');
+          const blob = await response.blob();
+          if (!blob.type.startsWith('image/')) throw new Error('图片类型无法识别');
+          return blob;
+        } finally { clearTimeout(timer); }
       }
 
-      function insertCenteredImage(source, alt = '文章图片', afterBlock = currentImageInsertionAnchor()) {
-        const paragraph = document.createElement('p');
-        paragraph.dataset.wechatRole = 'image';
-        paragraph.setAttribute('style', imageBlockStyle());
-        const image = document.createElement('img');
-        image.src = source;
-        image.alt = alt || '文章图片';
-        image.setAttribute('aria-label', '文章图片，按 Ctrl 或 Command + C 复制');
-        image.setAttribute('style', imageElementStyle());
-        image.setAttribute('draggable', 'false');
-        paragraph.appendChild(image);
+      function reportMedia(message, warning = false) {
+        mediaStatus.textContent = message;
+        mediaStatus.classList.toggle('warning', warning);
+      }
 
-        if (afterBlock?.parentElement === editor) afterBlock.insertAdjacentElement('afterend', paragraph);
-        else editor.appendChild(paragraph);
+      function markMissingImage(image) {
+        image.src = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="480" height="100"><rect width="480" height="100" fill="#eeeeee"/><text x="240" y="55" text-anchor="middle" font-size="15" fill="#777777">图片未取得 · 可单独复制补图</text></svg>');
+        image.dataset.imageMissing = 'true';
+        image.alt = '图片未取得，请从 Word 单独复制此图补入，或导入 DOCX';
+        image.title = image.alt;
+        image.removeAttribute('data-image-id');
+      }
 
-        editor.querySelectorAll('img[data-image-selected]').forEach((node) => node.removeAttribute('data-image-selected'));
-        image.dataset.imageSelected = 'true';
-        const range = document.createRange();
-        range.setStartAfter(paragraph);
+      function pasteMarker() {
+        dismissGuidanceSample();
+        commitEditorHistory();
+        const selection = getSelection();
+        const range = selection.rangeCount && editor.contains(selection.anchorNode)
+          ? selection.getRangeAt(0).cloneRange() : document.createRange();
+        if (!editor.contains(range.commonAncestorContainer)) {
+          range.selectNodeContents(editor);
+          range.collapse(false);
+        }
+        const replaceRange = range.cloneRange();
+        range.collapse(false);
+        const marker = document.createComment('article-import');
+        marker.replaceRange = replaceRange;
+        range.insertNode(marker);
+        range.setStartAfter(marker);
         range.collapse(true);
-        const selection = window.getSelection();
         selection.removeAllRanges();
         selection.addRange(range);
-        savedEditorRange = range.cloneRange();
-        return paragraph;
+        return marker;
       }
 
-      function fileAsDataUrl(file) {
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(String(reader.result || ''));
-          reader.onerror = () => reject(reader.error || new Error('图片读取失败'));
-          reader.readAsDataURL(file);
-        });
-      }
-
-      function loadImageFromBlob(blob) {
-        return new Promise((resolve, reject) => {
-          const objectUrl = URL.createObjectURL(blob);
-          const image = new Image();
-          const finish = () => URL.revokeObjectURL(objectUrl);
-          image.onload = () => {
-            finish();
-            resolve(image);
-          };
-          image.onerror = () => {
-            finish();
-            reject(new Error('图片解码失败'));
-          };
-          image.src = objectUrl;
-        });
-      }
-
-      async function optimizeImageBlob(blob) {
-        const type = String(blob?.type || '').toLowerCase();
-        if (!blob || type === 'image/gif' || type === 'image/svg+xml') return blob;
-        const image = await loadImageFromBlob(blob);
-        const sourceWidth = image.naturalWidth || image.width;
-        const sourceHeight = image.naturalHeight || image.height;
-        if (!sourceWidth || !sourceHeight) return blob;
-
-        const dimensionScale = Math.min(1, IMAGE_MAX_WIDTH / sourceWidth, IMAGE_MAX_HEIGHT / sourceHeight);
-        const pixelScale = Math.min(1, Math.sqrt(IMAGE_MAX_PIXELS / (sourceWidth * sourceHeight)));
-        const scale = Math.min(dimensionScale, pixelScale);
-        if (scale === 1 && blob.size <= IMAGE_KEEP_ORIGINAL_BYTES) return blob;
-
-        const width = Math.max(1, Math.round(sourceWidth * scale));
-        const height = Math.max(1, Math.round(sourceHeight * scale));
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const preservePng = type === 'image/png' && blob.size <= IMAGE_PNG_PRESERVE_BYTES;
-        const context = canvas.getContext('2d', { alpha: preservePng });
-        if (!context) return blob;
-        if (!preservePng) {
-          context.fillStyle = '#ffffff';
-          context.fillRect(0, 0, width, height);
+      function insertAtMarker(marker, fragment) {
+        if (!editor.contains(marker)) throw new Error('导入位置已变更，请重新粘贴');
+        marker.replaceRange?.deleteContents();
+        let block = marker.parentElement;
+        while (block && block !== editor && block.parentElement !== editor) block = block.parentElement;
+        if (block && block !== editor && block.parentElement === editor) {
+          const tailRange = document.createRange();
+          tailRange.setStartAfter(marker);
+          tailRange.setEnd(block, block.childNodes.length);
+          const tail = block.cloneNode(false);
+          tail.appendChild(tailRange.extractContents());
+          block.after(marker);
+          if (tail.textContent || tail.querySelector('img') || tail.innerHTML.includes('<!--article-import-->')) marker.after(tail);
+          if (!block.textContent && !block.querySelector('img') && !block.innerHTML.includes('<!--article-import-->')) block.remove();
         }
-        context.drawImage(image, 0, 0, width, height);
-        const outputType = preservePng ? 'image/png' : 'image/jpeg';
-        const optimized = await new Promise((resolve, reject) => {
-          canvas.toBlob((value) => value ? resolve(value) : reject(new Error('图片压缩失败')), outputType, 0.88);
-        });
-        return optimized.size < blob.size ? optimized : blob;
-      }
-
-      async function imageBlobAsEmbeddedUrl(blob) {
-        return fileAsDataUrl(await optimizeImageBlob(blob));
-      }
-
-      async function fetchImageBlob(source, timeout = 2800) {
-        const controller = new AbortController();
-        const timer = window.setTimeout(() => controller.abort(), timeout);
-        try {
-          const response = await fetch(source, { signal: controller.signal });
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          const blob = await response.blob();
-          if (!blob.type.startsWith('image/')) throw new Error('非图片响应');
-          return blob;
-        } finally {
-          window.clearTimeout(timer);
+        const last = fragment.lastChild;
+        marker.before(fragment);
+        marker.remove();
+        if (last?.isConnected) {
+          const range = document.createRange();
+          range.setStartAfter(last);
+          range.collapse(true);
+          const selection = getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+          savedEditorRange = null;
         }
       }
 
-      async function mapWithConcurrency(items, limit, worker) {
-        let cursor = 0;
-        const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-          while (cursor < items.length) {
-            const index = cursor;
-            cursor += 1;
-            await worker(items[index], index);
+      async function resolvePastedImages(root, files = [], rtf = '') {
+        const images = [...root.querySelectorAll('img')];
+        let originals = 0, linked = 0, missing = 0;
+        const unresolved = [];
+        for (const image of images) {
+          const existing = imageLibrary.get(image);
+          if (existing) { imageLibrary.bind(image, existing); originals++; continue; }
+          const source = image._pasteSource || image.getAttribute('src') || '';
+          if (/^(data:image\/|blob:|https?:\/\/)/i.test(source)) {
+            try {
+              imageLibrary.bind(image, await imageLibrary.add(await fetchImageBlob(source)));
+              originals++;
+              continue;
+            } catch {
+              if (/^https?:\/\//i.test(source)) {
+                image.src = source;
+                image.referrerPolicy = 'no-referrer';
+                linked++;
+                continue;
+              }
+            }
           }
-        });
-        await Promise.all(workers);
+          unresolved.push(image);
+        }
+        const picts = await WorkbenchMedia.rtfPictures(rtf);
+        // Match complete positional lists only; partial bitmap collections are ambiguous.
+        const candidates = picts.length ? picts : files;
+        const fullList = candidates.length === images.length;
+        const missingList = candidates.length === unresolved.length;
+        for (const image of unresolved) {
+          const index = fullList ? images.indexOf(image) : missingList ? unresolved.indexOf(image) : -1;
+          const fallbackIndex = files.length === images.length ? images.indexOf(image) : files.length === unresolved.length ? unresolved.indexOf(image) : -1;
+          const blob = candidates[index] || files[fallbackIndex];
+          if (blob) {
+            imageLibrary.bind(image, await imageLibrary.add(blob));
+            originals++;
+          } else { markMissingImage(image); missing++; }
+        }
+        if (!images.length) {
+          for (const blob of candidates.filter(Boolean)) {
+            const paragraph = document.createElement('p');
+            const image = document.createElement('img');
+            imageLibrary.bind(image, await imageLibrary.add(blob));
+            paragraph.append(image);
+            root.append(paragraph);
+            originals++;
+          }
+        }
+        return { originals, linked, missing, appended: !images.length && candidates.filter(Boolean).length > 0 && Boolean(root.textContent.trim()) };
       }
 
-      async function hydrateEditorImages(root = editor) {
-        const images = [...root.querySelectorAll('img')].filter((image) => {
-          const source = image.getAttribute('src') || image.getAttribute('data-src') || '';
-          if (!source) return false;
-          if (source.startsWith('data:')) return source.length > IMAGE_KEEP_ORIGINAL_BYTES * 1.45;
-          return true;
-        });
-        let embedded = 0;
-        let preserved = 0;
-        await mapWithConcurrency(images, 3, async (image) => {
-          const source = image.getAttribute('src') || image.getAttribute('data-src') || '';
+      function queueArticleImport(marker, build) {
+        pendingImports++;
+        cancelScheduledValidation();
+        clearTimeout(historyTimer);
+        reportMedia('正在读取图文，原图保持不变…');
+        const job = async () => {
           try {
-            image.src = await imageBlobAsEmbeddedUrl(await fetchImageBlob(source));
-            image.removeAttribute('data-src');
-            embedded += 1;
-          } catch {
-            if (!image.getAttribute('src') && source) image.setAttribute('src', source);
-            preserved += 1;
+            const { fragment, report } = await build();
+            insertAtMarker(marker, fragment);
+            if (pendingImports === 1) normalizeTopLevelBlocks();
+            else normalizeEditorImages();
+            detectTopAuthorLine();
+            if (!hasUserOriginal) {
+              originalArticleHtml = sanitizedEditorHtml();
+              hasUserOriginal = true;
+            }
+            commitEditorHistory();
+            let message = '文字已填入；若原文有图但未显示，可单独补图或导入 DOCX';
+            if (report.originals) message = '已保留 ' + report.originals + ' 张原图，编辑使用轻量预览';
+            if (report.missing) message = '已保留 ' + report.originals + ' 张原图；' + report.missing + ' 处缺图已占位，可单独补图或导入 DOCX';
+            else if (report.linked) message = '已保留 ' + report.originals + ' 张原图；' + report.linked + ' 张仅有网络链接';
+            else if (report.appended) message += '（未提供位置的图片放在本次内容末尾）';
+            reportMedia(message, Boolean(report.missing || report.linked || report.appended));
+          } catch (error) {
+            reportMedia(error.message || '导入失败，请重试', true);
+            marker.remove();
+          } finally {
+            pendingImports--;
+            if (!pendingImports) {
+              scheduleValidation();
+              scheduleOutputUpdate();
+              scheduleEditorHistory();
+              collectUnusedImages();
+            }
           }
-        });
-        normalizeEditorImages();
-        return { total: images.length, embedded, preserved };
+        };
+        importQueue = importQueue.then(job, job);
+        return importQueue;
       }
 
-      async function insertImageFiles(files) {
-        const images = [...files].filter((file) => file?.type?.startsWith('image/'));
-        if (!images.length) return 0;
-        dismissGuidanceSample();
-        let anchor = currentImageInsertionAnchor();
-        for (const [index, file] of images.entries()) {
-          const source = await imageBlobAsEmbeddedUrl(file);
-          anchor = insertCenteredImage(source, file.name || `粘贴图片 ${index + 1}`, anchor);
+      function pasteArticle({ html, text, rtf, files }) {
+        const marker = pasteMarker();
+        return queueArticleImport(marker, async () => {
+          let fragment;
+          if (html) fragment = WorkbenchMedia.sanitizeArticle(html);
+          else {
+            fragment = document.createDocumentFragment();
+            text.replace(/\r\n?/g, '\n').split('\n').forEach(line => {
+              const paragraph = document.createElement('p');
+              paragraph.textContent = line;
+              fragment.append(paragraph);
+            });
+          }
+          const report = await resolvePastedImages(fragment, files, rtf);
+          return { fragment, report };
+        });
+      }
+
+      let wordConverterPromise;
+      function loadWordConverter() {
+        if (window.mammoth) return Promise.resolve(window.mammoth);
+        if (!wordConverterPromise) wordConverterPromise = new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = 'vendor/mammoth.browser.min.js';
+          script.onload = () => resolve(window.mammoth);
+          script.onerror = () => { wordConverterPromise = null; script.remove(); reject(new Error('Word 导入组件加载失败，请刷新重试')); };
+          document.head.append(script);
+        });
+        return wordConverterPromise;
+      }
+
+      function importWordFile(file) {
+        if (!/\.docx$/i.test(file.name)) {
+          reportMedia('旧版 .doc 请在 Word 中全选复制，或另存为 .docx 后导入', true);
+          return;
         }
-        rememberOriginalArticle(false);
-        scheduleOutputUpdate();
-        scheduleValidation();
-        scheduleEditorHistory();
-        return images.length;
+        const marker = pasteMarker();
+        return queueArticleImport(marker, async () => {
+          const mammoth = await loadWordConverter();
+          let missing = 0;
+          const result = await mammoth.convertToHtml({ arrayBuffer: await file.arrayBuffer() }, {
+            externalFileAccess: false,
+            convertImage: mammoth.images.imgElement(async image => {
+              try {
+                const bytes = await image.readAsArrayBuffer();
+                const asset = await imageLibrary.add(new Blob([bytes], { type: image.contentType }));
+                return { src: asset.previewUrl, 'data-image-id': asset.id };
+              } catch {
+                missing++;
+                return { src: '', alt: 'Word 图片未能读取' };
+              }
+            })
+          });
+          const fragment = WorkbenchMedia.sanitizeArticle(result.value);
+          const report = await resolvePastedImages(fragment);
+          report.missing = Math.max(report.missing, missing);
+          return { fragment, report };
+        });
       }
 
       function selectedEditorImage() {
         return editor.querySelector('img[data-image-selected="true"]');
       }
 
-      function copyImageElementFallback(image) {
-        const selection = window.getSelection();
-        const range = document.createRange();
-        range.selectNode(image);
-        selection.removeAllRanges();
-        selection.addRange(range);
-        const copied = document.execCommand('copy');
-        selection.removeAllRanges();
-        return copied;
-      }
 
       async function imageBlobAsPng(blob) {
         if (blob.type === 'image/png') return blob;
@@ -3009,24 +3125,40 @@
       async function copySelectedImage() {
         const image = selectedEditorImage();
         if (!image) return false;
-        let copied = false;
+        if (image.hasAttribute('data-image-missing')) { reportMedia('请先补入这张原图', true); return false; }
+        const original = imageLibrary.get(image)?.original;
+        const source = original ? Promise.resolve(original) : fetchImageBlob(image.src);
+        const png = source.then(imageBlobAsPng);
+        const html = source.then(fileAsDataUrl).then(src => {
+          const root = document.createElement('div');
+          const clone = image.cloneNode(false);
+          clone.src = src;
+          for (const attr of [...clone.attributes]) if (attr.name.startsWith('data-')) clone.removeAttribute(attr.name);
+          root.append(clone);
+          return root;
+        });
+        png.catch(() => {});
+        html.catch(() => {});
         try {
-          const sourceBlob = await (await fetch(image.src)).blob();
-          const pngBlob = await imageBlobAsPng(sourceBlob);
-          if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined') throw new Error('剪贴板不支持');
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
-          copied = true;
+          if (!navigator.clipboard?.write || !window.ClipboardItem) throw new Error('fallback');
+          await navigator.clipboard.write([new ClipboardItem({
+            'image/png': png,
+            'text/html': html.then(root => new Blob([root.innerHTML], { type: 'text/html' }))
+          })]);
+          reportMedia('已复制所选图片，使用原图尺寸');
+          return true;
         } catch {
-          copied = copyImageElementFallback(image);
+          try {
+            const root = await html;
+            const copied = legacyCopyStage(root, root.innerHTML, image.alt || '图片');
+            reportMedia(copied ? '已复制所选原图' : '图片复制失败，请重试', !copied);
+            return copied;
+          } catch { reportMedia('图片复制失败，请重新补入原图', true); return false; }
         }
-        if (copied) {
-          image.setAttribute('aria-label', '图片已复制');
-          window.setTimeout(() => image.setAttribute('aria-label', '文章图片，按 Ctrl 或 Command + C 复制'), 1800);
-        }
-        return copied;
       }
 
       function isTitleBlock(block) {
+        if (block.querySelector('img')) return false;
         if (block.dataset.wechatRole === 'article-title') return false;
         const tagIsHeading = /^H[1-4]$/.test(block.tagName);
         const explicitRole = block.dataset.wechatRole === 'chapter-title';
@@ -3940,6 +4072,7 @@
       }
 
       function scheduleValidation() {
+        if (pendingImports) return;
         cancelScheduledValidation();
         const workload = documentWorkload();
         status.className = 'status';
@@ -4000,6 +4133,7 @@
       }
 
       function scheduleOutputUpdate() {
+        if (pendingImports) return;
         window.clearTimeout(outputTimer);
         cancelIdleTask(outputIdleHandle);
         const workload = documentWorkload();
@@ -4011,75 +4145,95 @@
 
       async function prepareCloneImagesForClipboard(clone) {
         const images = [...clone.querySelectorAll('img')];
-        let embedded = 0;
-        let preserved = 0;
-        await mapWithConcurrency(images, 3, async (image) => {
+        let embedded = 0, linked = 0;
+        for (const image of images) {
+          if (image.hasAttribute('data-image-missing')) throw new Error('有图片未从 Word 取得，请补图后再复制');
           image.setAttribute('style', imageElementStyle());
-          image.removeAttribute('data-image-selected');
-          const source = image.getAttribute('src') || image.getAttribute('data-src') || '';
-          if (!source) return;
-          if (source.startsWith('data:')) {
-            embedded += 1;
-            return;
+          const asset = imageLibrary.get(image);
+          if (asset) {
+            image.src = await fileAsDataUrl(asset.original);
+            embedded++;
+          } else {
+            const source = image.getAttribute('src') || '';
+            if (/^data:image\//i.test(source)) embedded++;
+            else if (/^https?:\/\//i.test(source)) linked++;
+            else throw new Error('有图片无法复制，请重新补入原图');
           }
-          try {
-            image.src = await imageBlobAsEmbeddedUrl(await fetchImageBlob(source));
-            image.removeAttribute('data-src');
-            embedded += 1;
-          } catch {
-            preserved += 1;
+          for (const attribute of [...image.attributes]) {
+            if (attribute.name.startsWith('data-') || ['loading','decoding','aria-label','draggable','title'].includes(attribute.name)) image.removeAttribute(attribute.name);
           }
-        });
-        return { total: images.length, embedded, preserved };
+          await WorkbenchMedia.nextFrame();
+        }
+        return { total: images.length, embedded, linked };
       }
 
-      function legacyCopyStage(cleanClone) {
-        normalizeEditorImages();
+      function legacyCopyStage(cleanClone, html, plainText) {
         const copyStage = document.createElement('div');
-        copyStage.setAttribute('style', 'position:fixed;left:-10000px;top:0;width:620px;background:#fff;pointer-events:none;');
+        copyStage.setAttribute('style', 'position:fixed;left:-10000px;top:0;width:620px;background:#fff;');
         copyStage.append(...cleanClone.childNodes);
         document.body.appendChild(copyStage);
-        const selection = window.getSelection();
+        const selection = getSelection();
+        const savedRange = selection.rangeCount ? selection.getRangeAt(0).cloneRange() : null;
         const range = document.createRange();
         range.selectNodeContents(copyStage);
         selection.removeAllRanges();
         selection.addRange(range);
-        const copied = document.execCommand('copy');
-        selection.removeAllRanges();
-        copyStage.remove();
-        return copied;
+        const supplyData = event => {
+          if (!event.clipboardData) return;
+          event.preventDefault();
+          event.clipboardData.setData('text/html', html);
+          event.clipboardData.setData('text/plain', plainText);
+        };
+        document.addEventListener('copy', supplyData);
+        try { return document.execCommand('copy'); }
+        finally {
+          document.removeEventListener('copy', supplyData);
+          selection.removeAllRanges();
+          if (savedRange?.commonAncestorContainer?.isConnected) selection.addRange(savedRange);
+          copyStage.remove();
+        }
       }
 
-      async function copyRichText(feedbackButton = copyButton) {
-        normalizeEditorImages();
-        const cleanClone = sanitizedEditorClone();
-        const imageReport = await prepareCloneImagesForClipboard(cleanClone);
-        const richHtml = cleanClone.innerHTML.trim();
-        const plainText = cleanClone.textContent.trim();
+      async function copyRichText(feedbackButton = copyButton, selectedClone = null) {
+        if (copyInProgress) return false;
+        if (pendingImports) { reportMedia('图文正在导入，请完成后再复制', true); return false; }
+        copyInProgress = true;
+        const label = feedbackButton.textContent;
+        feedbackButton.disabled = true;
+        feedbackButton.textContent = '准备原图…';
+        const cleanClone = selectedClone || sanitizedEditorClone();
+        const plainText = [...cleanClone.children].map(node => node.textContent).join('\n\n');
+        let report;
+        const prepared = prepareCloneImagesForClipboard(cleanClone).then(value => {
+          report = value;
+          return new Blob([cleanClone.innerHTML], { type: 'text/html' });
+        });
+        // Call write during the click gesture; provide deferred image assembly to Safari.
+        prepared.catch(() => {});
         let copied = false;
-        if (navigator.clipboard?.write && typeof ClipboardItem !== 'undefined') {
-          try {
-            await navigator.clipboard.write([new ClipboardItem({
-              'text/html': new Blob([richHtml], { type: 'text/html' }),
-              'text/plain': new Blob([plainText], { type: 'text/plain' })
-            })]);
-            copied = true;
-          } catch {
-            copied = false;
+        try {
+          if (navigator.clipboard?.write && window.ClipboardItem) {
+            try {
+              await navigator.clipboard.write([new ClipboardItem({
+                'text/html': prepared,
+                'text/plain': new Blob([plainText], { type: 'text/plain' })
+              })]);
+              copied = true;
+            } catch { /* Retry with the browser's selection-based clipboard. */ }
           }
+          const blob = await prepared;
+          if (!copied) copied = legacyCopyStage(cleanClone, await blob.text(), plainText);
+          if (!copied) throw new Error('浏览器未允许复制，请重试');
+          feedbackButton.textContent = report.total ? '已复制 · ' + report.total + ' 图' : '已复制';
+          reportMedia(report.linked ? report.embedded + ' 张原图已复制；' + report.linked + ' 张保留网络链接' : '已复制全文，图片使用原始数据', Boolean(report.linked));
+        } catch (error) {
+          feedbackButton.textContent = '复制未完成';
+          reportMedia(error.message || '复制失败，请重试', true);
+        } finally {
+          copyInProgress = false;
+          feedbackButton.disabled = false;
+          setTimeout(() => { if (!copyInProgress) feedbackButton.textContent = label; }, 2200);
         }
-        if (!copied) copied = legacyCopyStage(cleanClone);
-        const originalText = feedbackButton.textContent;
-        feedbackButton.textContent = copied
-          ? imageReport.total
-            ? `已复制 · ${imageReport.total} 图`
-            : '已复制'
-          : '复制失败';
-        if (copied && imageReport.preserved) {
-          status.className = 'status warning';
-          status.innerHTML = `<span class="status-dot"></span><span>${imageReport.embedded} 张图片已内嵌，${imageReport.preserved} 张保留原链接</span>`;
-        }
-        window.setTimeout(() => { feedbackButton.textContent = originalText; }, 2200);
         return copied;
       }
 
@@ -4719,7 +4873,8 @@
       window.WeChatWorkbench = {
         importArticle: importAgentContent,
         schema: { author: 'string', intro: 'string[]', sections: '{ title, paragraphs[] }[]' },
-        prompt: () => agentPromptText
+        prompt: () => agentPromptText,
+        mediaDiagnostics: () => ({ ...imageLibrary.stats(), pendingImports, historyCharacters: [...undoStack, ...redoStack, lastHistoryHtml || ''].reduce((n, html) => n + html.length, 0) })
       };
 
       function sanitizeAnnotationText(value) {
@@ -4871,46 +5026,64 @@
         scheduleOutputUpdate();
         scheduleValidation();
       });
-      editor.addEventListener('paste', (event) => {
-        const richClipboardHtml = event.clipboardData?.getData('text/html') || '';
-        const plainClipboardText = event.clipboardData?.getData('text/plain') || '';
-        const imageFiles = [...(event.clipboardData?.items || [])]
-          .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
-          .map((item) => item.getAsFile())
-          .filter(Boolean);
-        const hasArticleContent = Boolean(plainClipboardText.trim() || richClipboardHtml.replace(/<img\b[^>]*>/gi, '').replace(/<[^>]+>/g, '').trim());
-        if (imageFiles.length && !hasArticleContent) {
-          event.preventDefault();
-          insertImageFiles(imageFiles).catch(() => {
-            status.className = 'status warning';
-            status.innerHTML = '<span class="status-dot"></span><span>图片插入失败</span>';
+      editor.addEventListener('paste', event => {
+        const data = event.clipboardData;
+        if (!data) return;
+        const html = data.getData('text/html');
+        const text = data.getData('text/plain');
+        const rtf = data.getData('text/rtf') || data.getData('application/rtf');
+        const files = [...data.items].filter(item => item.kind === 'file' && item.type.startsWith('image/')).map(item => item.getAsFile()).filter(Boolean);
+        if (!html && !text && !files.length && !rtf) return;
+        event.preventDefault();
+        // A selected missing-image slot can be repaired in place with a single image.
+        const slot = selectedEditorImage();
+        if (getSelection().isCollapsed && slot?.hasAttribute('data-image-missing') && files.length === 1 && !text.trim()) {
+          commitEditorHistory();
+          pendingImports++;
+          imageLibrary.add(files[0]).then(asset => {
+            if (slot.isConnected) {
+              imageLibrary.bind(slot, asset);
+              slot.alt = '文章图片';
+              slot.removeAttribute('title');
+              normalizeEditorImages();
+              reportMedia('已在原位置补入原图');
+            }
+          }).catch(error => reportMedia(error.message, true)).finally(() => {
+            pendingImports--;
+            commitEditorHistory();
+            scheduleOutputUpdate();
+            scheduleValidation();
           });
           return;
         }
-        const imageCountBeforePaste = editor.querySelectorAll('img').length;
-        dismissGuidanceSample();
-        window.setTimeout(async () => {
-          removeEmptyArticleBlocks();
-          normalizeEditorImages();
-          if (imageFiles.length && editor.querySelectorAll('img').length === imageCountBeforePaste) {
-            await insertImageFiles(imageFiles);
-          }
-          const imageReport = await hydrateEditorImages();
-          detectTopAuthorLine();
-          rememberOriginalArticle(false);
-          scheduleOutputUpdate();
-          scheduleEditorHistory();
-          if (imageReport.total) {
-            status.className = imageReport.preserved ? 'status warning' : 'status';
-            status.innerHTML = imageReport.preserved
-              ? `<span class="status-dot"></span><span>${imageReport.embedded} 张图片已内嵌，${imageReport.preserved} 张保留原链接</span>`
-              : `<span class="status-dot"></span><span>${imageReport.embedded} 张图片已优化并内嵌</span>`;
-          }
-        }, 0);
+        pasteArticle({ html, text, rtf, files });
+      });
+
+      const wordInput = document.getElementById('word-file');
+      document.getElementById('import-word').addEventListener('click', () => wordInput.click());
+      wordInput.addEventListener('change', () => {
+        const file = wordInput.files[0];
+        if (file) importWordFile(file);
+        wordInput.value = '';
+      });
+      editor.addEventListener('dragover', event => {
+        if (![...event.dataTransfer.types].includes('Files')) return;
+        event.preventDefault();
+        editor.classList.add('drag-active');
+      });
+      editor.addEventListener('dragleave', () => editor.classList.remove('drag-active'));
+      editor.addEventListener('drop', event => {
+        const files = [...event.dataTransfer.files];
+        if (!files.length) return;
+        event.preventDefault();
+        editor.classList.remove('drag-active');
+        if (files.length === 1 && /\.(docx|doc)$/i.test(files[0].name)) importWordFile(files[0]);
+        else if (files.every(file => file.type.startsWith('image/'))) pasteArticle({ html: '', text: '', rtf: '', files });
+        else reportMedia('请拖入一个 DOCX 文档或图片；也可直接从 Word 全选复制粘贴', true);
       });
       editor.addEventListener('keydown', (event) => {
         if (!(event.metaKey || event.ctrlKey)) return;
-        if (event.key.toLowerCase() === 'c' && selectedEditorImage()) {
+        if (event.key.toLowerCase() === 'c' && getSelection().isCollapsed && selectedEditorImage()) {
           event.preventDefault();
           copySelectedImage();
           return;
@@ -4919,6 +5092,19 @@
         event.preventDefault();
         if (event.shiftKey) redoEditorChange();
         else undoEditorChange();
+      });
+      editor.addEventListener('copy', event => {
+        const selection = getSelection();
+        if (copyInProgress || !selection.rangeCount || selection.isCollapsed) return;
+        const range = selection.getRangeAt(0);
+        if (!editor.contains(range.commonAncestorContainer)) return;
+        const clone = document.createElement('div');
+        clone.append(range.cloneContents());
+        if (!clone.querySelector('img')) return;
+        event.preventDefault();
+        clone.querySelectorAll('[data-guidance-marker]').forEach(node => node.remove());
+        clone.querySelectorAll('[data-format-warning]').forEach(node => node.removeAttribute('data-format-warning'));
+        copyRichText(copyButton, clone);
       });
       editor.addEventListener('mousedown', () => {
         savedEditorRange = null;
@@ -5042,9 +5228,11 @@
 
       const editorObserver = new MutationObserver((mutations) => {
         const hasContentChange = mutations.some((mutation) => !(
-          mutation.type === 'attributes' && mutation.attributeName === 'data-format-warning'
+          mutation.type === 'attributes' && (['data-format-warning', 'data-image-selected', 'aria-label', 'loading', 'decoding'].includes(mutation.attributeName)
+            || (mutation.target.dataset.imageId && mutation.attributeName === 'src'))
         ));
         if (!hasContentChange) return;
+        if (pendingImports) return;
         if (guidanceSampleActive && sanitizedEditorHtml() !== guidanceSampleBaselineHtml) dismissGuidanceSample();
         scheduleValidation();
         scheduleEditorHistory();
