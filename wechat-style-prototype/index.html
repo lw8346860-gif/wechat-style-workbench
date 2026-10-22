@@ -1516,7 +1516,7 @@
 <body>
   <main class="app-shell">
     <header class="topbar">
-      <p class="maker-meta">制作人：松壑 <span>v-1.0.6</span></p>
+      <p class="maker-meta">制作人：松壑 <span>v-1.0.7</span></p>
       <div>
         <p class="eyebrow">Formatting Lab</p>
         <div class="brand-title-row">
@@ -1697,7 +1697,8 @@
           <span id="mobile-check-state" class="mobile-check-state" aria-live="polite">实时检查已开启</span>
         </nav>
         <div class="editor-intake-note">
-          <span id="media-status" role="status" aria-live="polite">可从 Word 全选复制粘贴，图片保留原始数据</span>
+          <span id="media-status" role="status" aria-live="polite">粘贴公开链接或图文，自动收集原图</span>
+          <button id="retry-images" type="button" hidden>重试补图</button>
           <button id="import-word" type="button" title="也可以将 DOCX 拖入正文">导入 Word</button>
           <input id="word-file" type="file" accept=".docx" hidden>
         </div>
@@ -1781,7 +1782,7 @@
   </template>
 
   <script src="vendor/purify.min.js"></script>
-  <script src="media-library.js"></script>
+  <script src="media-library.js?v=1.0.7"></script>
   <script>
     (() => {
       const ORANGE = '#ff6827';
@@ -1875,6 +1876,8 @@
       const LARGE_DOCUMENT_BLOCKS = 260;
       const VERY_LARGE_DOCUMENT_BLOCKS = 800;
       const mediaStatus = document.getElementById('media-status');
+      const retryImagesButton = document.getElementById('retry-images');
+      const linkClient = new WorkbenchMedia.LinkClient();
       const imageLibrary = new WorkbenchMedia.ImageLibrary(asset => {
         editor.querySelectorAll(`img[data-image-id="${asset.id}"]`).forEach(image => imageLibrary.bind(image, asset));
       });
@@ -2872,30 +2875,24 @@
 
       const fileAsDataUrl = WorkbenchMedia.dataUrl;
 
-      async function fetchImageBlob(source, timeout = 3500) {
-        if (!/^(data:image\/|blob:|https?:\/\/)/i.test(source)) throw new Error('浏览器未提供图片文件');
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), timeout);
-        try {
-          const response = await fetch(source, { signal: controller.signal, credentials: 'omit' });
-          if (!response.ok) throw new Error('图片读取失败');
-          const blob = await response.blob();
-          if (!blob.type.startsWith('image/')) throw new Error('图片类型无法识别');
-          return blob;
-        } finally { clearTimeout(timer); }
+      async function fetchImageBlob(source, referrer = '') {
+        return linkClient.fetchImage(source, referrer);
       }
 
       function reportMedia(message, warning = false) {
         mediaStatus.textContent = message;
         mediaStatus.classList.toggle('warning', warning);
+        retryImagesButton.hidden = !editor.querySelector('img[data-image-source]');
       }
 
-      function markMissingImage(image) {
+      function markMissingImage(image, source = '', referrer = '') {
         image.src = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="480" height="100"><rect width="480" height="100" fill="#eeeeee"/><text x="240" y="55" text-anchor="middle" font-size="15" fill="#777777">图片未取得 · 可单独复制补图</text></svg>');
         image.dataset.imageMissing = 'true';
-        image.alt = '图片未取得，请从 Word 单独复制此图补入，或导入 DOCX';
+        image.alt = source ? '图片尚未收齐，请连接读取助手后重试补图' : '图片未取得，请从 Word 单独复制此图补入，或导入 DOCX';
         image.title = image.alt;
         image.removeAttribute('data-image-id');
+        if (source) image.dataset.imageSource = source;
+        if (referrer) image.dataset.imageReferrer = referrer;
       }
 
       function pasteMarker() {
@@ -2953,39 +2950,41 @@
         const images = [...root.querySelectorAll('img')];
         let originals = 0, linked = 0, missing = 0;
         const unresolved = [];
-        for (const image of images) {
+        let completed = 0;
+        await WorkbenchMedia.mapConcurrent(images, async image => {
           const existing = imageLibrary.get(image);
-          if (existing) { imageLibrary.bind(image, existing); originals++; continue; }
-          const source = image._pasteSource || image.getAttribute('src') || '';
-          if (/^(data:image\/|blob:|https?:\/\/)/i.test(source)) {
+          if (existing) { imageLibrary.bind(image, existing); originals++; return; }
+          const sources = image._pasteSources || [image.dataset.imageSource || image._pasteSource || (image.hasAttribute('data-image-missing') ? '' : image.getAttribute('src')) || ''];
+          const referrer = image._pasteReferrer || image.dataset.imageReferrer || '';
+          let lastError;
+          for (const source of sources) {
+            if (!/^(data:image\/|blob:|https?:\/\/)/i.test(source)) continue;
             try {
-              imageLibrary.bind(image, await imageLibrary.add(await fetchImageBlob(source)));
+              const asset = imageLibrary.fromSource(source) || await imageLibrary.add(await fetchImageBlob(source, referrer), [source]);
+              imageLibrary.bind(image, asset);
               originals++;
-              continue;
-            } catch {
-              if (/^https?:\/\//i.test(source)) {
-                image.src = source;
-                image.referrerPolicy = 'no-referrer';
-                linked++;
-                continue;
-              }
-            }
+              completed++;
+              if (images.length > 1) reportMedia('正在收集原图 ' + completed + ' / ' + images.length + '…');
+              return;
+            } catch (error) { lastError = error; }
           }
-          unresolved.push(image);
-        }
+          unresolved.push({ image, source: sources.find(source => /^https?:\/\//i.test(source)) || '', referrer, error: lastError });
+        });
         const picts = await WorkbenchMedia.rtfPictures(rtf);
         // Match complete positional lists only; partial bitmap collections are ambiguous.
         const candidates = picts.length ? picts : files;
         const fullList = candidates.length === images.length;
+        unresolved.sort((a,b) => images.indexOf(a.image) - images.indexOf(b.image));
         const missingList = candidates.length === unresolved.length;
-        for (const image of unresolved) {
-          const index = fullList ? images.indexOf(image) : missingList ? unresolved.indexOf(image) : -1;
-          const fallbackIndex = files.length === images.length ? images.indexOf(image) : files.length === unresolved.length ? unresolved.indexOf(image) : -1;
+        for (const item of unresolved) {
+          const { image, source, referrer } = item;
+          const index = fullList ? images.indexOf(image) : missingList ? unresolved.indexOf(item) : -1;
+          const fallbackIndex = files.length === images.length ? images.indexOf(image) : files.length === unresolved.length ? unresolved.indexOf(item) : -1;
           const blob = candidates[index] || files[fallbackIndex];
           if (blob) {
             imageLibrary.bind(image, await imageLibrary.add(blob));
             originals++;
-          } else { markMissingImage(image); missing++; }
+          } else { markMissingImage(image, source, referrer); missing++; }
         }
         if (!images.length) {
           for (const blob of candidates.filter(Boolean)) {
@@ -2997,7 +2996,7 @@
             originals++;
           }
         }
-        return { originals, linked, missing, appended: !images.length && candidates.filter(Boolean).length > 0 && Boolean(root.textContent.trim()) };
+        return { originals, linked, missing, remoteMissing: unresolved.filter(item => item.source && item.image.hasAttribute('data-image-missing')).length, error: unresolved.find(item => item.error)?.error?.message || '', appended: !images.length && candidates.filter(Boolean).length > 0 && Boolean(root.textContent.trim()) };
       }
 
       function queueArticleImport(marker, build) {
@@ -3019,7 +3018,7 @@
             commitEditorHistory();
             let message = '文字已填入；若原文有图但未显示，可单独补图或导入 DOCX';
             if (report.originals) message = '已保留 ' + report.originals + ' 张原图，编辑使用轻量预览';
-            if (report.missing) message = '已保留 ' + report.originals + ' 张原图；' + report.missing + ' 处缺图已占位，可单独补图或导入 DOCX';
+            if (report.missing) message = '已收集 ' + report.originals + ' 张原图；' + report.missing + ' 张未收齐，' + (report.remoteMissing ? (report.error || '可点击“重试补图”') : '请单独复制补图或导入 DOCX');
             else if (report.linked) message = '已保留 ' + report.originals + ' 张原图；' + report.linked + ' 张仅有网络链接';
             else if (report.appended) message += '（未提供位置的图片放在本次内容末尾）';
             reportMedia(message, Boolean(report.missing || report.linked || report.appended));
@@ -3056,6 +3055,50 @@
           const report = await resolvePastedImages(fragment, files, rtf);
           return { fragment, report };
         });
+      }
+
+      function singleArticleUrl(value) {
+        const text = String(value || '').trim();
+        if (/\s/.test(text)) return '';
+        try { const url = new URL(text); return ['http:', 'https:'].includes(url.protocol) ? url.href : ''; } catch { return ''; }
+      }
+
+      function pasteArticleLink(url) {
+        const marker = pasteMarker();
+        return queueArticleImport(marker, async () => {
+          reportMedia('正在读取公开文章与图片…');
+          const payload = await linkClient.readArticle(url);
+          let fragment;
+          if (payload.imageUrl) {
+            const container = document.createElement('p');
+            const image = document.createElement('img');
+            image._pasteSource = payload.imageUrl;
+            container.append(image);
+            fragment = document.createDocumentFragment();
+            fragment.append(container);
+          } else fragment = WorkbenchMedia.articleFragment(payload.html, payload.sourceUrl, payload.title);
+          const report = await resolvePastedImages(fragment);
+          return { fragment, report };
+        });
+      }
+
+      async function retryRemoteImages() {
+        if (pendingImports || copyInProgress) return;
+        commitEditorHistory();
+        pendingImports++;
+        retryImagesButton.disabled = true;
+        linkClient.unavailableUntil = 0;
+        try {
+          const report = await resolvePastedImages(editor);
+          normalizeEditorImages();
+          reportMedia(report.missing ? '还有 ' + report.missing + ' 张图片未收齐。' + report.error : '图片已全部嵌入，可复制全文', Boolean(report.missing));
+        } finally {
+          pendingImports--;
+          retryImagesButton.disabled = false;
+          commitEditorHistory();
+          scheduleValidation();
+          scheduleOutputUpdate();
+        }
       }
 
       let wordConverterPromise;
@@ -3125,9 +3168,12 @@
       async function copySelectedImage() {
         const image = selectedEditorImage();
         if (!image) return false;
-        if (image.hasAttribute('data-image-missing')) { reportMedia('请先补入这张原图', true); return false; }
+        if (image.hasAttribute('data-image-missing') && !image.dataset.imageSource) { reportMedia('请先补入这张原图', true); return false; }
         const original = imageLibrary.get(image)?.original;
-        const source = original ? Promise.resolve(original) : fetchImageBlob(image.src);
+        const source = original ? Promise.resolve(original) : fetchImageBlob(image.dataset.imageSource || image.src, image.dataset.imageReferrer || '').then(async blob => {
+          imageLibrary.bind(image, await imageLibrary.add(blob));
+          return blob;
+        });
         const png = source.then(imageBlobAsPng);
         const html = source.then(fileAsDataUrl).then(src => {
           const root = document.createElement('div');
@@ -4145,9 +4191,20 @@
 
       async function prepareCloneImagesForClipboard(clone) {
         const images = [...clone.querySelectorAll('img')];
+        const recoverable = images.map(image => ({ image, source: image.dataset.imageSource }));
+        if (images.some(image => !imageLibrary.get(image))) {
+          const recovery = await resolvePastedImages(clone);
+          if (recovery.missing) throw new Error('还有 ' + recovery.missing + ' 张图片未收齐，请重试补图后再复制。' + recovery.error);
+          recoverable.filter(item => item.source).forEach(({ image, source }) => {
+            const asset = imageLibrary.get(image);
+            if (asset) editor.querySelectorAll('img[data-image-source]').forEach(live => {
+              if (live.dataset.imageSource === source) imageLibrary.bind(live, asset);
+            });
+          });
+        }
         let embedded = 0, linked = 0;
         for (const image of images) {
-          if (image.hasAttribute('data-image-missing')) throw new Error('有图片未从 Word 取得，请补图后再复制');
+          if (image.hasAttribute('data-image-missing')) throw new Error('有图片尚未取得，请补图后再复制');
           image.setAttribute('style', imageElementStyle());
           const asset = imageLibrary.get(image);
           if (asset) {
@@ -4156,14 +4213,18 @@
           } else {
             const source = image.getAttribute('src') || '';
             if (/^data:image\//i.test(source)) embedded++;
-            else if (/^https?:\/\//i.test(source)) linked++;
             else throw new Error('有图片无法复制，请重新补入原图');
           }
           for (const attribute of [...image.attributes]) {
-            if (attribute.name.startsWith('data-') || ['loading','decoding','aria-label','draggable','title'].includes(attribute.name)) image.removeAttribute(attribute.name);
+            if (!['src','alt','style','width','height'].includes(attribute.name)) image.removeAttribute(attribute.name);
           }
           await WorkbenchMedia.nextFrame();
         }
+        clone.querySelectorAll('*').forEach(node => {
+          for (const attribute of [...node.attributes]) {
+            if (attribute.name.startsWith('data-') || ['id','class','contenteditable','spellcheck','tabindex','role'].includes(attribute.name) || attribute.name.startsWith('aria-')) node.removeAttribute(attribute.name);
+          }
+        });
         return { total: images.length, embedded, linked };
       }
 
@@ -4822,18 +4883,9 @@
         learnStyleStatus.textContent = `正文 ${bodySizeRaw}px · 标题 ${titleSizeRaw}px · 缩进 ${learnedTheme.indent}px`;
       }
 
-      function isPublicWechatArticleUrl(value) {
-        try {
-          const url = new URL(value);
-          return url.protocol === 'https:' && url.hostname === 'mp.weixin.qq.com';
-        } catch {
-          return false;
-        }
-      }
-
       async function learnStyleFromWechatLink(sourceUrl) {
-        if (!isPublicWechatArticleUrl(sourceUrl)) {
-          learnStyleStatus.textContent = '请粘贴公开的公众号文章链接';
+        if (!singleArticleUrl(sourceUrl)) {
+          learnStyleStatus.textContent = '请粘贴完整的公开文章链接';
           return;
         }
 
@@ -4841,14 +4893,11 @@
         learnStyleButton.textContent = '读取中';
         learnStyleStatus.textContent = '正在读取公开文章版式……';
         try {
-          const response = await fetch('http://127.0.0.1:4318/api/learn-wechat-style', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url: sourceUrl })
-          });
-          const payload = await response.json().catch(() => ({}));
-          if (!response.ok || !payload.html) throw new Error(payload.error || '没有读取到文章正文');
-          styleSample.innerHTML = payload.html;
+          const payload = await linkClient.readArticle(sourceUrl);
+          const sample = WorkbenchMedia.articleFragment(payload.html, payload.sourceUrl);
+          // Style learning stays separate from importing article content into the editor.
+          sample.querySelectorAll('img').forEach(image => image.remove());
+          styleSample.replaceChildren(sample);
           learnPastedStyle();
           const summary = learnStyleStatus.textContent;
           learnStyleStatus.textContent = `${payload.title ? `《${payload.title}》` : '公开文章'} · ${summary}`;
@@ -4865,13 +4914,14 @@
 
       function learnCurrentStyleSource() {
         const sourceText = styleSample.innerText.trim();
-        const isSingleWechatLink = sourceText && !/\s/.test(sourceText) && isPublicWechatArticleUrl(sourceText);
-        if (isSingleWechatLink) return learnStyleFromWechatLink(sourceText);
+        const url = singleArticleUrl(sourceText);
+        if (url) return learnStyleFromWechatLink(url);
         learnPastedStyle();
       }
 
       window.WeChatWorkbench = {
         importArticle: importAgentContent,
+        importLink: pasteArticleLink,
         schema: { author: 'string', intro: 'string[]', sections: '{ title, paragraphs[] }[]' },
         prompt: () => agentPromptText,
         mediaDiagnostics: () => ({ ...imageLibrary.stats(), pendingImports, historyCharacters: [...undoStack, ...redoStack, lastHistoryHtml || ''].reduce((n, html) => n + html.length, 0) })
@@ -5056,8 +5106,15 @@
           });
           return;
         }
+        const articleUrl = !files.length && !rtf && singleArticleUrl(text);
+        if (articleUrl && (!html || !/<img\b/i.test(html))) {
+          pasteArticleLink(articleUrl);
+          return;
+        }
         pasteArticle({ html, text, rtf, files });
       });
+
+      retryImagesButton.addEventListener('click', () => retryRemoteImages().catch(error => reportMedia(error.message, true)));
 
       const wordInput = document.getElementById('word-file');
       document.getElementById('import-word').addEventListener('click', () => wordInput.click());

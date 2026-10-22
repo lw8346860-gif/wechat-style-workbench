@@ -1,0 +1,21 @@
+[Unit]
+Description=WeChat Workbench public article and image reader
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/node --max-old-space-size=192 /opt/wechat-workbench/wechat-link-helper.mjs
+Restart=on-failure
+RestartSec=3
+DynamicUser=true
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+MemoryMax=512M
+TasksMax=32
+
+[Install]
+WantedBy=multi-user.target
