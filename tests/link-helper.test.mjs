@@ -3,7 +3,7 @@ import test from 'node:test';
 import { EventEmitter } from 'node:events';
 import { Readable } from 'node:stream';
 import { gzipSync } from 'node:zlib';
-import { createLinkHelper, fetchPublicResource, publicUrl, isPublicAddress, readArticle } from '../wechat-style-prototype/wechat-link-helper.mjs';
+import { createLinkHelper, fetchPublicResource, publicUrl, isPublicAddress, readArticle, imageContentType } from '../wechat-style-prototype/wechat-link-helper.mjs';
 
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64');
 const publicLookup = async () => [{ address: '93.184.216.34', family: 4 }];
@@ -43,7 +43,30 @@ test('limits decompressed body size and keeps original image bytes/referrer', as
   const result = await fetchPublicResource('https://mmbiz.qpic.cn/test.png', { kind: 'image', lookup: publicLookup, request: transport([{ body: gzipSync(png), headers: { 'content-encoding': 'gzip' } }], calls) });
   assert.deepEqual(result.bytes, png);
   assert.equal(calls[0].options.headers.Referer, 'https://mp.weixin.qq.com/');
+  assert.equal(imageContentType(Buffer.from('<?xml version="1.0"?><!DOCTYPE svg PUBLIC "svg" "https://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg xmlns="http://www.w3.org/2000/svg"/>')), 'image/svg+xml');
   await assert.rejects(fetchPublicResource('https://public.test/article', { lookup: publicLookup, request: transport([{ body: Buffer.alloc(8 * 1024 * 1024 + 1) }]) }), /过大/);
+});
+
+test('aborted browser requests cannot bypass the concurrent-download limit', async () => {
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  let started = 0;
+  const server = createLinkHelper({ fetchResource: async url => {
+    started++; await gate;
+    return { bytes: Buffer.from('<article>正文</article>'), contentType: 'text/html', sourceUrl: url };
+  } });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const url = `http://127.0.0.1:${server.address().port}/api/read-article`;
+  const controller = new AbortController();
+  const options = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: 'https://public.test/article' }) };
+  const requests = Array.from({ length: 6 }, () => fetch(url, { ...options, signal: controller.signal }).catch(() => null));
+  try {
+    for (let i = 0; i < 100 && started < 6; i++) await new Promise(resolve => setTimeout(resolve, 10));
+    assert.equal(started, 6);
+    controller.abort(); await Promise.all(requests);
+    const response = await fetch(url, options);
+    assert.equal(response.status, 429);
+  } finally { release(); server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
 });
 
 test('public article/image APIs preserve img and reject non-image responses', async () => {

@@ -14,3 +14,5 @@
 公开健康检查：`https://mp.togma.online/api/health`，期望 `version: 2`。
 
 测试顺序：先 `node --test tests/link-helper.test.mjs`，然后在独立 Chrome CDP（9333）和本地静态服务（4319）环境中依次运行 `remote-images-regression.mjs`、`media-regression.mjs`、`docx-regression.mjs`。这三个脚本会操作同一测试标签页，不要并行运行。
+
+`node tests/live-images-smoke.mjs` 验证真实公开网页经线上读取服务进入编辑器，并复制为内嵌图片。可通过 `TEST_URL` 指定本地/GitHub/腾讯云页面，通过 `SOURCE_URL` 指定测试公开文章。它使用独立 CDP 标签页和模拟剪贴板，不操作用户登录态或系统剪贴板。

@@ -52,6 +52,7 @@ function corsHeaders(contentType = 'application/json; charset=utf-8') {
 }
 
 function sendJson(response, status, payload) {
+  if (response.destroyed || response.headersSent) return;
   response.writeHead(status, corsHeaders());
   response.end(JSON.stringify(payload));
 }
@@ -143,9 +144,9 @@ export function imageContentType(bytes) {
   if (bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255) return 'image/jpeg';
   if (/^GIF8[79]a/.test(bytes.subarray(0,6).toString())) return 'image/gif';
   if (bytes.subarray(0,4).toString() === 'RIFF' && bytes.subarray(8,12).toString() === 'WEBP') return 'image/webp';
-  if (bytes.subarray(4,8).toString() === 'ftyp' && /avif|avis/.test(bytes.subarray(8,32).toString())) return 'image/avif';
+  if (bytes.subarray(4,8).toString() === 'ftyp' && /avif|avis/.test(bytes.subarray(8,128).toString())) return 'image/avif';
   if (bytes.subarray(0,2).toString() === 'BM') return 'image/bmp';
-  if (/^\s*(?:<\?xml[^>]*>\s*)?(?:<!--[\s\S]*?-->\s*)?<svg[\s>]/i.test(bytes.subarray(0,4096).toString('utf8'))) return 'image/svg+xml';
+  if (/^\s*(?:<\?xml[^>]*>\s*)?(?:<!--[\s\S]*?-->\s*)*(?:<!DOCTYPE\s+svg\b[^>]*>\s*)?<svg[\s>]/i.test(bytes.subarray(0,4096).toString('utf8'))) return 'image/svg+xml';
   return '';
 }
 
@@ -196,7 +197,9 @@ export function createLinkHelper({ fetchResource = fetchPublicResource } = {}) {
     if (request.method !== 'POST' || !['/api/read-article','/api/learn-wechat-style','/api/fetch-image'].includes(request.url)) { sendJson(response, 404, { error: 'Not found' }); return; }
     if (active >= 6) { request.resume(); sendJson(response, 429, { error: '图片读取繁忙，请稍后重试补图' }); return; }
     active++;
-    response.once('close', () => { active--; });
+    let jobFinished = false, responseFinished = false, released = false;
+    const release = () => { if (jobFinished && responseFinished && !released) { released = true; active--; } };
+    response.once('close', () => { responseFinished = true; release(); });
     try {
       const payload = await readRequestJson(request);
       publicUrl(String(payload.url || ''));
@@ -209,7 +212,7 @@ export function createLinkHelper({ fetchResource = fetchPublicResource } = {}) {
       } else sendJson(response, 200, await readArticle(payload.url, fetchResource));
     } catch (error) {
       sendJson(response, 400, { error: error.message || '读取失败' });
-    }
+    } finally { jobFinished = true; release(); }
   });
   server.requestTimeout = 15000;
   server.headersTimeout = 10000;
