@@ -1516,7 +1516,7 @@
 <body>
   <main class="app-shell">
     <header class="topbar">
-      <p class="maker-meta">制作人：松壑 <span>v-1.0.8</span></p>
+      <p class="maker-meta">制作人：松壑 <span>v-1.0.9</span></p>
       <div>
         <p class="eyebrow">Formatting Lab</p>
         <div class="brand-title-row">
@@ -1782,7 +1782,7 @@
   </template>
 
   <script src="vendor/purify.min.js"></script>
-  <script src="media-library.js?v=1.0.8"></script>
+  <script src="media-library.js?v=1.0.9"></script>
   <script>
     (() => {
       const ORANGE = '#ff6827';
@@ -3025,6 +3025,7 @@
             else if (report.linked) message = '已保留 ' + report.originals + ' 张原图；' + report.linked + ' 张仅有网络链接';
             else if (report.appended) message += '（未提供位置的图片放在本次内容末尾）';
             if (report.emptyImages) message += '；已清理 ' + report.emptyImages + ' 处空白图片占位';
+            if (report.linkedImages) message += '；已补回 ' + report.linkedImages + ' 张链接图片';
             reportMedia(message, Boolean(report.missing || report.linked || report.appended));
           } catch (error) {
             reportMedia(error.message || '导入失败，请重试', true);
@@ -3043,11 +3044,11 @@
         return importQueue;
       }
 
-      function pasteArticle({ html, text, rtf, files }) {
+      function pasteArticle({ html, text = '', rtf = '', files = [], baseUrl = '' }) {
         const marker = pasteMarker();
         return queueArticleImport(marker, async () => {
           let fragment;
-          if (html) fragment = WorkbenchMedia.sanitizeArticle(html);
+          if (html) fragment = WorkbenchMedia.sanitizeArticle(html, { baseUrl });
           else {
             fragment = document.createDocumentFragment();
             text.replace(/\r\n?/g, '\n').split('\n').forEach(line => {
@@ -3057,6 +3058,8 @@
             });
           }
           const report = await resolvePastedImages(fragment, files, rtf);
+          report.emptyImages = fragment._emptyImageCount || 0;
+          report.linkedImages = fragment._linkedImageCount || 0;
           return { fragment, report };
         });
       }
@@ -3083,6 +3086,7 @@
           } else fragment = WorkbenchMedia.articleFragment(payload.html, payload.sourceUrl, payload.title);
           const report = await resolvePastedImages(fragment);
           report.emptyImages = fragment._emptyImageCount || 0;
+          report.linkedImages = fragment._linkedImageCount || 0;
           return { fragment, report };
         });
       }
@@ -4927,9 +4931,10 @@
       window.WeChatWorkbench = {
         importArticle: importAgentContent,
         importLink: pasteArticleLink,
+        importHtml: (html, sourceUrl = '') => pasteArticle({ html, baseUrl: sourceUrl }),
         schema: { author: 'string', intro: 'string[]', sections: '{ title, paragraphs[] }[]' },
         prompt: () => agentPromptText,
-        mediaDiagnostics: () => ({ ...imageLibrary.stats(), pendingImports, historyCharacters: [...undoStack, ...redoStack, lastHistoryHtml || ''].reduce((n, html) => n + html.length, 0) })
+        mediaDiagnostics: () => ({ ...imageLibrary.stats(), pendingImports, documentImages: editor.querySelectorAll('img').length, missingImages: editor.querySelectorAll('img[data-image-missing]').length, historyCharacters: [...undoStack, ...redoStack, lastHistoryHtml || ''].reduce((n, html) => n + html.length, 0) })
       };
 
       function sanitizeAnnotationText(value) {

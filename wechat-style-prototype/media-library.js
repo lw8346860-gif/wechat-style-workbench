@@ -10,6 +10,104 @@
     reader.readAsDataURL(blob);
   });
 
+  function validDimensions(width, height) {
+    return Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0 && width <= 1000000 && height <= 1000000
+      ? { width: Math.max(1, Math.round(width)), height: Math.max(1, Math.round(height)) } : null;
+  }
+
+  function exifOrientation(bytes, start, end) {
+    if (start + 8 > end) return 1;
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const little = bytes[start] === 0x49 && bytes[start + 1] === 0x49;
+    if (!little && !(bytes[start] === 0x4d && bytes[start + 1] === 0x4d)) return 1;
+    if (view.getUint16(start + 2, little) !== 42) return 1;
+    const directory = start + view.getUint32(start + 4, little);
+    if (directory < start || directory + 2 > end) return 1;
+    const count = Math.min(view.getUint16(directory, little), 512);
+    for (let index = 0; index < count; index++) {
+      const entry = directory + 2 + index * 12;
+      if (entry + 12 > end) break;
+      if (view.getUint16(entry, little) === 0x0112 && view.getUint16(entry + 2, little) === 3 && view.getUint32(entry + 4, little) === 1) {
+        const value = view.getUint16(entry + 8, little);
+        return value >= 1 && value <= 8 ? value : 1;
+      }
+    }
+    return 1;
+  }
+
+  // Read dimensions from bytes already held for hashing; never decode a large raster twice.
+  function originalImageDimensions(bytes, type) {
+    const size = bytes.length;
+    const view = new DataView(bytes.buffer, bytes.byteOffset, size);
+    const ascii = (offset, length) => String.fromCharCode(...bytes.subarray(offset, offset + length));
+    if (size >= 24 && ascii(0, 8) === '\x89PNG\r\n\x1a\n' && ascii(12, 4) === 'IHDR') return validDimensions(view.getUint32(16), view.getUint32(20));
+    if (size >= 10 && /^GIF8[79]a$/.test(ascii(0, 6))) return validDimensions(view.getUint16(6, true), view.getUint16(8, true));
+    if (size >= 4 && bytes[0] === 0xff && bytes[1] === 0xd8) {
+      let offset = 2, width = 0, height = 0, orientation = 1;
+      for (let count = 0; count < 2048 && offset + 1 < size; count++) {
+        if (bytes[offset++] !== 0xff) break;
+        while (offset < size && bytes[offset] === 0xff) offset++;
+        const marker = bytes[offset++];
+        if (marker === 0xda || marker === 0xd9) break;
+        if (marker === 0x01 || marker === 0xd8 || (marker >= 0xd0 && marker <= 0xd7)) continue;
+        if (offset + 2 > size) break;
+        const length = view.getUint16(offset);
+        if (length < 2 || offset + length > size) break;
+        if (marker === 0xe1 && length >= 16 && ascii(offset + 2, 6) === 'Exif\x00\x00') orientation = exifOrientation(bytes, offset + 8, offset + length);
+        if ([0xc0,0xc1,0xc2,0xc3,0xc5,0xc6,0xc7,0xc9,0xca,0xcb,0xcd,0xce,0xcf].includes(marker) && length >= 8) {
+          height = view.getUint16(offset + 3);
+          width = view.getUint16(offset + 5);
+        }
+        offset += length;
+      }
+      return orientation >= 5 ? validDimensions(height, width) : validDimensions(width, height);
+    }
+    if (size >= 20 && ascii(0, 4) === 'RIFF' && ascii(8, 4) === 'WEBP') {
+      let width = 0, height = 0, orientation = 1;
+      for (let offset = 12, count = 0; offset + 8 <= size && count < 256; count++) {
+        const kind = ascii(offset, 4), length = view.getUint32(offset + 4, true), start = offset + 8;
+        if (kind === 'VP8X' && length >= 10 && start + 10 <= size) {
+          width = 1 + bytes[start + 4] + (bytes[start + 5] << 8) + (bytes[start + 6] << 16);
+          height = 1 + bytes[start + 7] + (bytes[start + 8] << 8) + (bytes[start + 9] << 16);
+        } else if (!width && kind === 'VP8L' && length >= 5 && start + 5 <= size && bytes[start] === 0x2f) {
+          const packed = view.getUint32(start + 1, true);
+          width = (packed & 0x3fff) + 1;
+          height = ((packed >>> 14) & 0x3fff) + 1;
+        } else if (!width && kind === 'VP8 ' && length >= 10 && start + 10 <= size && ascii(start + 3, 3) === '\x9d\x01\x2a') {
+          width = view.getUint16(start + 6, true) & 0x3fff;
+          height = view.getUint16(start + 8, true) & 0x3fff;
+        } else if (kind === 'EXIF' && start + length <= size) {
+          const tiff = ascii(start, 6) === 'Exif\x00\x00' ? start + 6 : start;
+          orientation = exifOrientation(bytes, tiff, start + length);
+        }
+        if (length > size - start) break;
+        offset = start + length + (length % 2);
+      }
+      return orientation >= 5 ? validDimensions(height, width) : validDimensions(width, height);
+    }
+    if (size >= 26 && ascii(0, 2) === 'BM') {
+      const header = view.getUint32(14, true);
+      if (header === 12) return validDimensions(view.getUint16(18, true), view.getUint16(20, true));
+      if (header >= 40) return validDimensions(view.getInt32(18, true), Math.abs(view.getInt32(22, true)));
+    }
+    if (/image\/svg\+xml/i.test(type || '')) {
+      const root = /<svg\b([^>]*)>/i.exec(new TextDecoder().decode(bytes.subarray(0, 16384)))?.[1] || '';
+      const dimension = name => {
+        const value = new RegExp('(?:^|\\s)' + name + '\\s*=\\s*["\']([\\d.]+)(?:px)?["\']', 'i').exec(root)?.[1];
+        return value ? Number(value) : 0;
+      };
+      return validDimensions(dimension('width'), dimension('height'));
+    }
+    return null;
+  }
+
+  async function loadImageMetadata(source) {
+    const image = new Image();
+    image.src = source;
+    await image.decode();
+    return image;
+  }
+
   class ImageLibrary {
     constructor(onPreview) {
       this.assets = new Map();
@@ -22,6 +120,7 @@
     async add(blob, sources = []) {
       if (!blob?.size) throw new Error('图片数据为空');
       const bytes = await blob.arrayBuffer();
+      const dimensions = originalImageDimensions(new Uint8Array(bytes), blob.type);
       const hash = globalThis.crypto?.subtle
         ? [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(n => n.toString(16).padStart(2, '0')).join('')
         : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -31,7 +130,7 @@
         sources.filter(Boolean).forEach(source => { asset.sources.add(source); this.bySource.set(source, id); });
         return asset;
       }
-      const asset = { id, original: blob, originalUrl: URL.createObjectURL(blob), previewUrl: '', previewBytes: 0, sources: new Set(sources.filter(Boolean)) };
+      const asset = { id, original: blob, originalUrl: URL.createObjectURL(blob), previewUrl: '', previewBytes: 0, width: dimensions?.width || 0, height: dimensions?.height || 0, sources: new Set(sources.filter(Boolean)) };
       // The editor initially shows a tiny placeholder while a single preview job runs.
       asset.previewUrl = blob.size < 180000 || /image\/(gif|svg\+xml)/i.test(blob.type) ? asset.originalUrl : PLACEHOLDER;
       this.assets.set(id, asset);
@@ -42,14 +141,26 @@
         try {
           await nextFrame();
           if (this.assets.get(id) !== asset) return;
-          if (/image\/(gif|svg\+xml)/i.test(blob.type)) return;
+          if (/image\/(gif|svg\+xml)/i.test(blob.type)) {
+            if (!asset.width || !asset.height) {
+              const image = await loadImageMetadata(asset.originalUrl);
+              const natural = validDimensions(image.naturalWidth, image.naturalHeight);
+              if (natural) Object.assign(asset, natural);
+            }
+            return;
+          }
           let bitmap;
           if (typeof createImageBitmap === 'function') {
-            bitmap = await createImageBitmap(blob, { resizeWidth: 1000, resizeQuality: 'medium' });
+            const scale = asset.width && asset.height ? Math.min(1, 1000 / asset.width, 1600 / asset.height) : 0;
+            bitmap = await createImageBitmap(blob, scale ? { resizeWidth: Math.max(1, Math.round(asset.width * scale)), resizeHeight: Math.max(1, Math.round(asset.height * scale)), resizeQuality: 'medium' } : {});
+            if (!asset.width || !asset.height) {
+              const natural = validDimensions(bitmap.width, bitmap.height);
+              if (natural) Object.assign(asset, natural);
+            }
           } else {
-            bitmap = new Image();
-            bitmap.src = asset.originalUrl;
-            await bitmap.decode();
+            bitmap = await loadImageMetadata(asset.originalUrl);
+            const natural = validDimensions(bitmap.naturalWidth, bitmap.naturalHeight);
+            if (natural) Object.assign(asset, natural);
           }
           try {
             const scale = Math.min(1, 1000 / bitmap.width, 1600 / bitmap.height);
@@ -85,6 +196,10 @@
     bind(image, asset) {
       if (image.hasAttribute('data-image-missing')) { image.alt = '文章图片'; image.removeAttribute('title'); }
       image.dataset.imageId = asset.id;
+      if (asset.width && asset.height) {
+        image.setAttribute('width', String(asset.width));
+        image.setAttribute('height', String(asset.height));
+      }
       image.src = asset.previewUrl;
       image.loading = 'lazy';
       image.decoding = 'async';
@@ -197,6 +312,8 @@
       }).sort((a,b) => b.size - a.size)[0]?.url || '';
     };
     const candidates = ['data-src','data-original','data-lazy-src','data-actualsrc','data-url','_src','data-croporisrc'].map(name => image.getAttribute(name));
+    const linkedImage = image.closest('a[imgurl],a[data-imgurl]');
+    if (linkedImage) candidates.push(linkedImage.getAttribute('imgurl') || linkedImage.getAttribute('data-imgurl'));
     candidates.push(largest(image.getAttribute('data-srcset') || image.getAttribute('srcset')));
     image.closest('picture')?.querySelectorAll('source[srcset]').forEach(source => candidates.push(largest(source.getAttribute('srcset'))));
     candidates.push(image.getAttribute('src'));
@@ -206,10 +323,40 @@
     return hasRemote && resolved.length > 1 ? resolved.filter(source => !/^(?:data:|blob:)/i.test(source) && !/(?:^|\/)(?:loading|spacer|blank|placeholder|transparent|1x1)[^/]*\.(?:gif|png|svg)(?:\?|$)/i.test(source)) : resolved;
   }
 
-  function sanitizeArticle(html, { baseUrl = '' } = {}) {
+  function sanitizeArticle(html, { baseUrl = '', wechat = false } = {}) {
     const template = document.createElement('template');
     template.innerHTML = html;
     baseUrl ||= /(?:^|\n)SourceURL:\s*(https?:\/\/\S+)/i.exec(html)?.[1] || template.content.querySelector('meta[property="og:url"],base[href]')?.getAttribute('content') || template.content.querySelector('base[href]')?.getAttribute('href') || '';
+    // Native WeChat copy omits user-select:none image children, but keeps imgurl
+    // on their anchor. Rebuild the image BEFORE sanitization removes that metadata.
+    let linkedImages = 0;
+    template.content.querySelectorAll('a[imgurl],a[data-imgurl]').forEach(anchor => {
+      const source = (anchor.getAttribute('imgurl') || anchor.getAttribute('data-imgurl') || '').trim();
+      if (!/^(https?:\/\/|\/\/|data:image\/)/i.test(source) || anchor.querySelector('img')) return;
+      const image = document.createElement('img');
+      image.setAttribute('src', source);
+      image.alt = '文章图片';
+      anchor.prepend(image);
+      linkedImages++;
+    });
+    const wechatContext = wechat || /https?:\/\/mp\.weixin\.qq\.com\//i.test(baseUrl) || Boolean(template.content.querySelector('img.wxw-img, a[linktype="image"][imgurl]'));
+    let emptyImages = 0;
+    if (wechatContext) template.content.querySelectorAll('img').forEach(image => {
+      if (!wechat && !image.classList.contains('wxw-img')) return;
+      const sources = imageSources(image, baseUrl);
+      const identity = [...image.attributes].some(attribute => !['class','style','src'].includes(attribute.name) && attribute.value.trim());
+      if (identity) return;
+      let isEmpty = !sources.length;
+      if (sources.length && sources.every(source => /^data:image\/svg\+xml,/i.test(source))) {
+        isEmpty = sources.every(source => {
+          try {
+            const svg = decodeURIComponent(source.slice(source.indexOf(',') + 1));
+            return /width=['"]1(?:px)?['"]/i.test(svg) && /height=['"]1(?:px)?['"]/i.test(svg) && /fill-opacity=['"]0['"]|opacity=['"]0['"]/i.test(svg);
+          } catch { return false; }
+        });
+      }
+      if (isEmpty) { image.remove(); emptyImages++; }
+    });
     // Word's VML image reference sometimes lives in an Office conditional comment.
     const walker = document.createTreeWalker(template.content, NodeFilter.SHOW_COMMENT);
     const comments = [];
@@ -257,6 +404,8 @@
       image._pasteSources = sources;
       image._pasteReferrer = baseUrl;
     });
+    clean._emptyImageCount = emptyImages;
+    clean._linkedImageCount = linkedImages;
     return clean;
   }
 
@@ -267,17 +416,7 @@
     const candidates = [...template.content.querySelectorAll('article, main, [role="main"], [itemprop="articleBody"], .entry-content, .post-content, #page-content')];
     const root = wechat || candidates.sort((a,b) => (b.textContent.length + b.querySelectorAll('img').length * 150) - (a.textContent.length + a.querySelectorAll('img').length * 150))[0] || template.content;
     root.querySelectorAll('script,style,noscript,iframe,object,embed,form,nav,footer,aside,head,button,input,[hidden],[aria-hidden="true"]').forEach(node => node.remove());
-    // Published WeChat HTML can contain repeated, completely empty img residues.
-    // Drop only identity-less empty markup here, never Word/clipboard image slots.
-    let emptyImages = 0;
-    if (wechat) root.querySelectorAll('img').forEach(image => {
-      if (imageSources(image, sourceUrl).length) return;
-      if ([...image.attributes].some(attribute => !['class','style'].includes(attribute.name) && attribute.value.trim())) return;
-      image.remove();
-      emptyImages++;
-    });
-    const fragment = sanitizeArticle(root.innerHTML ?? [...root.childNodes].map(node => node.outerHTML || node.textContent).join(''), { baseUrl: sourceUrl });
-    fragment._emptyImageCount = emptyImages;
+    const fragment = sanitizeArticle(root.innerHTML ?? [...root.childNodes].map(node => node.outerHTML || node.textContent).join(''), { baseUrl: sourceUrl, wechat: Boolean(wechat) });
     if (!fragment.textContent.trim() && !fragment.querySelector('img')) throw new Error('网页没有可读取的正文，请打开文章后复制全文粘贴');
     const firstText = fragment.firstElementChild?.textContent.trim() || '';
     if (title && firstText !== title.trim()) {

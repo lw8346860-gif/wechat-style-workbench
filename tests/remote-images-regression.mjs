@@ -72,6 +72,26 @@ try {
   assert.equal(imported.copy.embedded, true);
   assert.equal(requests.filter(item => item.url.endsWith('/images/one.png')).length, 1);
 
+  // Real Chrome copying WeChat linked cards keeps a[imgurl] but excludes their
+  // user-select:none img children. The clipboard also keeps empty wxw-img ghosts.
+  const directPaste = await evaluate(`(async()=>{
+    const base='https://native.fixture.test';
+    const cards=['/images/large.svg','/images/one.png','/images/large.svg','/images/one.png'].map(path=>'<section><a linktype="image" imgurl="'+base+path+'" href="https://mp.weixin.qq.com/s/linked"><span class="h5_image_link" style="user-select:none"></span></a></section>').join('');
+    const ghosts='<img class="rich_pages wxw-img" style="height:auto!important">'.repeat(22);
+    await fixturePaste('<p>原生粘贴正文。</p><p><img class="wxw-img" data-src="'+base+'/images/one.png"></p>'+cards+'<p><img class="wxw-img wx_img_placeholder" data-src="'+base+'/images/animation.gif" src="data:image/svg+xml,%3Csvg%20width=%221%22%20height=%221%22%20fill-opacity=%220%22%3E%3C/svg%3E"></p>'+ghosts+'<p><img class="wxw-img" src="'+base+'/images/large.svg"></p><p>结尾正文。</p>');
+    const editor=document.getElementById('editor');
+    const before={images:editor.querySelectorAll('img').length,missing:editor.querySelectorAll('[data-image-missing]').length};
+    const wordSlot=WorkbenchMedia.sanitizeArticle('<p><img src="file:///missing-word.png"></p>').querySelectorAll('img').length;
+    const identified=WorkbenchMedia.sanitizeArticle('<p><img class="wxw-img" data-imgfileid="needed-original"></p>').querySelectorAll('img').length;
+    return {...before,wordSlot,identified,copy:await fixtureCopy()};
+  })()`);
+  assert.equal(directPaste.images,7);
+  assert.equal(directPaste.missing,0);
+  assert.equal(directPaste.wordSlot,1);
+  assert.equal(directPaste.identified,1);
+  assert.deepEqual(directPaste.copy.hashes,[hashes[0],hashes[1],hashes[0],hashes[1],hashes[0],hashes[2],hashes[1]]);
+  assert.equal(directPaste.copy.clean,true);
+
   const failed = await evaluate(`(async()=>{
     await fixturePaste('<p>独立网页粘贴。</p><p><img data-src="https://other.fixture.test/images/retry.png" src="data:image/gif;base64,${gif.toString('base64')}"></p><p>结尾。</p>');
     const editor=document.getElementById('editor');const copy=await fixtureCopy();
@@ -91,5 +111,5 @@ try {
   assert.equal(recovered.missing, 0);
   assert.deepEqual(recovered.copy.hashes, [hashes[0]]);
   assert.equal(recovered.copy.clean, true);
-  console.log(JSON.stringify({ linkImport: { order: imported.order, images: imported.images, originalBytes: imported.stats.originalBytes }, clipboard: imported.copy, missingImageProtection: failed, retryRecovered: recovered.missing === 0 }, null, 2));
+  console.log(JSON.stringify({ linkImport: { order: imported.order, images: imported.images, originalBytes: imported.stats.originalBytes }, clipboard: imported.copy, directPaste, missingImageProtection: failed, retryRecovered: recovered.missing === 0 }, null, 2));
 } finally { ws.close(); await new Promise(resolve => helper.close(resolve)); }
