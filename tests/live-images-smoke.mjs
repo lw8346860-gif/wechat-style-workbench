@@ -22,11 +22,15 @@ try {
     const data=new DataTransfer();data.setData('text/plain',${JSON.stringify(sourceUrl)});
     editor.dispatchEvent(new ClipboardEvent('paste',{clipboardData:data,bubbles:true,cancelable:true}));
     for(let i=0;i<1500&&WeChatWorkbench.mediaDiagnostics().pendingImports;i++)await new Promise(r=>setTimeout(r,40));
+    document.getElementById('format-all').click();
+    const originalHashes=[...editor.querySelectorAll('img')].map(image=>(image.dataset.imageId||'').replace(/^image-/,''));
     let copied='';Object.defineProperty(navigator,'clipboard',{configurable:true,value:{write:async items=>{copied=await(await items[0].getType('text/html')).text();}}});
     document.getElementById('copy-rich').click();
     for(let i=0;i<300&&document.getElementById('copy-rich').disabled;i++)await new Promise(r=>setTimeout(r,40));
     const doc=new DOMParser().parseFromString(copied,'text/html');
-    return {blocks:editor.children.length,images:editor.querySelectorAll('img').length,missing:editor.querySelectorAll('[data-image-missing]').length,embedded:doc.images.length,allEmbedded:[...doc.images].every(image=>image.src.startsWith('data:image/')),clean:!copied.includes('blob:')&&!/data-image-|data-format-|data-wechat-/i.test(copied),stats:WeChatWorkbench.mediaDiagnostics(),message:document.getElementById('media-status').textContent};
+    const copiedHashes=[];
+    for(const image of doc.images)copiedHashes.push([...new Uint8Array(await crypto.subtle.digest('SHA-256',await(await fetch(image.src)).arrayBuffer()))].map(value=>value.toString(16).padStart(2,'0')).join(''));
+    return {blocks:editor.children.length,images:editor.querySelectorAll('img').length,missing:editor.querySelectorAll('[data-image-missing]').length,embedded:doc.images.length,allEmbedded:[...doc.images].every(image=>image.src.startsWith('data:image/')),originalHashesPreserved:JSON.stringify(originalHashes)===JSON.stringify(copiedHashes),previewsReady:[...editor.querySelectorAll('img')].every(image=>image.src.startsWith('blob:')),clean:!copied.includes('blob:')&&!/data-image-|data-format-|data-wechat-/i.test(copied),stats:WeChatWorkbench.mediaDiagnostics(),message:document.getElementById('media-status').textContent};
   })()` });
   if (result.result?.exceptionDetails) throw new Error(result.result.exceptionDetails.exception?.description || result.result.exceptionDetails.text);
   const value = result.result.result.value;
@@ -35,6 +39,8 @@ try {
   assert.equal(value.missing, 0, JSON.stringify(value));
   assert.equal(value.embedded, value.images);
   assert.equal(value.allEmbedded, true);
+  assert.equal(value.originalHashesPreserved, true);
+  assert.equal(value.previewsReady, true);
   assert.equal(value.clean, true);
   console.log(JSON.stringify({ pageUrl, sourceUrl, ...value }, null, 2));
 } finally { ws.close(); }

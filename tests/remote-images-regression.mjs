@@ -7,16 +7,18 @@ import { createLinkHelper } from '../wechat-style-prototype/wechat-link-helper.m
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64');
 const gif = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
 const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="12"><rect width="24" height="12" fill="blue"/></svg>');
-const images = new Map([['/images/one.png', png], ['/images/large.svg', svg], ['/images/animation.gif', gif], ['/images/retry.png', png]]);
-const hashes = [png, svg, gif].map(value => createHash('sha256').update(value).digest('hex'));
+const largePng = Buffer.concat([png, Buffer.alloc(220000)]);
+const images = new Map([['/images/one.png', largePng], ['/images/large.svg', svg], ['/images/animation.gif', gif], ['/images/retry.png', largePng]]);
+const hashes = [largePng, svg, gif].map(value => createHash('sha256').update(value).digest('hex'));
 let failRetry = true;
 const requests = [];
-const article = '<html><head><meta property="og:title" content="完整图文测试"></head><body><nav>不要导入导航</nav><article><h1>完整图文测试</h1><p>第一个自然段。</p><p><img src="data:image/gif;base64,' + gif.toString('base64') + '" data-src="/images/one.png"></p><p>第二个自然段。</p><picture><source srcset="/images/one.png 100w, /images/large.svg 1200w"><img src="/images/one.png"></picture><p>第三个自然段。</p><img data-original="//media.fixture.test/images/animation.gif"><script>window.unsafe=true</script></article><footer>不要导入页脚</footer></body></html>';
+const article = '<html><head><meta property="og:title" content="完整图文测试"></head><body><nav>不要导入导航</nav><article id="js_content"><h1>完整图文测试</h1><p>第一个自然段。</p><p><img src="data:image/gif;base64,' + gif.toString('base64') + '" data-src="/images/one.png"></p><p>第二个自然段。</p><picture><source srcset="/images/one.png 100w, /images/large.svg 1200w"><img src="/images/one.png"></picture><p>第三个自然段。</p><img data-original="//media.fixture.test/images/animation.gif">' + '<img class="rich_pages wxw-img" style="height:auto!important">'.repeat(22) + '<script>window.unsafe=true</script></article><footer>不要导入页脚</footer></body></html>';
 const helper = createLinkHelper({ fetchResource: async (url, options) => {
   requests.push({ url, options });
   const pathname = new URL(url).pathname;
   if (pathname === '/article') return { bytes: Buffer.from(article), contentType: 'text/html; charset=utf-8', sourceUrl: url };
   if (pathname === '/images/retry.png' && failRetry) throw new Error('临时读取失败，请重试');
+  if (pathname === '/images/animation.gif') await new Promise(resolve => setTimeout(resolve, 750));
   const bytes = images.get(pathname);
   if (!bytes) throw new Error('图片不存在');
   return { bytes, contentType: 'application/octet-stream', sourceUrl: url };
@@ -58,11 +60,12 @@ try {
       return { hashes, clean: !/blob:|data-image-|data-wechat-|data-format-|contenteditable|<script/i.test(window.fixtureHtml), embedded: [...doc.images].every(image=>image.src.startsWith('data:image/')), message: document.getElementById('media-status').textContent };
     };
     await fixturePaste('', 'https://news.fixture.test/article');
-    return { order:[...editor.children].map(node=>node.querySelector('img')?'IMAGE':node.textContent.trim()), images:editor.querySelectorAll('img[data-image-id]').length, missing:!!editor.querySelector('[data-image-missing]'), stats:WeChatWorkbench.mediaDiagnostics(), html:editor.innerHTML, copy:await fixtureCopy() };
+    return { order:[...editor.children].map(node=>node.querySelector('img')?'IMAGE':node.textContent.trim()), images:editor.querySelectorAll('img[data-image-id]').length, missing:!!editor.querySelector('[data-image-missing]'), previewsReady:[...editor.querySelectorAll('img')].every(image=>image.src.startsWith('blob:')), stats:WeChatWorkbench.mediaDiagnostics(), html:editor.innerHTML, copy:await fixtureCopy() };
   })()`);
   assert.deepEqual(imported.order, ['完整图文测试','第一个自然段。','IMAGE','第二个自然段。','IMAGE','第三个自然段。','IMAGE']);
   assert.equal(imported.images, 3);
   assert.equal(imported.missing, false);
+  assert.equal(imported.previewsReady, true);
   assert.ok(!/不要导入|<script|data:image/.test(imported.html));
   assert.deepEqual(imported.copy.hashes, hashes);
   assert.equal(imported.copy.clean, true);

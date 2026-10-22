@@ -1516,7 +1516,7 @@
 <body>
   <main class="app-shell">
     <header class="topbar">
-      <p class="maker-meta">制作人：松壑 <span>v-1.0.7</span></p>
+      <p class="maker-meta">制作人：松壑 <span>v-1.0.8</span></p>
       <div>
         <p class="eyebrow">Formatting Lab</p>
         <div class="brand-title-row">
@@ -1782,7 +1782,7 @@
   </template>
 
   <script src="vendor/purify.min.js"></script>
-  <script src="media-library.js?v=1.0.7"></script>
+  <script src="media-library.js?v=1.0.8"></script>
   <script>
     (() => {
       const ORANGE = '#ff6827';
@@ -3007,6 +3007,9 @@
         const job = async () => {
           try {
             const { fragment, report } = await build();
+            // Earlier previews may finish while later images are still downloading.
+            // Refresh detached images once more before inserting them into the editor.
+            imageLibrary.restore(fragment);
             insertAtMarker(marker, fragment);
             if (pendingImports === 1) normalizeTopLevelBlocks();
             else normalizeEditorImages();
@@ -3021,6 +3024,7 @@
             if (report.missing) message = '已收集 ' + report.originals + ' 张原图；' + report.missing + ' 张未收齐，' + (report.remoteMissing ? (report.error || '可点击“重试补图”') : '请单独复制补图或导入 DOCX');
             else if (report.linked) message = '已保留 ' + report.originals + ' 张原图；' + report.linked + ' 张仅有网络链接';
             else if (report.appended) message += '（未提供位置的图片放在本次内容末尾）';
+            if (report.emptyImages) message += '；已清理 ' + report.emptyImages + ' 处空白图片占位';
             reportMedia(message, Boolean(report.missing || report.linked || report.appended));
           } catch (error) {
             reportMedia(error.message || '导入失败，请重试', true);
@@ -3078,6 +3082,7 @@
             fragment.append(container);
           } else fragment = WorkbenchMedia.articleFragment(payload.html, payload.sourceUrl, payload.title);
           const report = await resolvePastedImages(fragment);
+          report.emptyImages = fragment._emptyImageCount || 0;
           return { fragment, report };
         });
       }

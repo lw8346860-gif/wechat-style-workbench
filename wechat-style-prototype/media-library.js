@@ -267,7 +267,17 @@
     const candidates = [...template.content.querySelectorAll('article, main, [role="main"], [itemprop="articleBody"], .entry-content, .post-content, #page-content')];
     const root = wechat || candidates.sort((a,b) => (b.textContent.length + b.querySelectorAll('img').length * 150) - (a.textContent.length + a.querySelectorAll('img').length * 150))[0] || template.content;
     root.querySelectorAll('script,style,noscript,iframe,object,embed,form,nav,footer,aside,head,button,input,[hidden],[aria-hidden="true"]').forEach(node => node.remove());
+    // Published WeChat HTML can contain repeated, completely empty img residues.
+    // Drop only identity-less empty markup here, never Word/clipboard image slots.
+    let emptyImages = 0;
+    if (wechat) root.querySelectorAll('img').forEach(image => {
+      if (imageSources(image, sourceUrl).length) return;
+      if ([...image.attributes].some(attribute => !['class','style'].includes(attribute.name) && attribute.value.trim())) return;
+      image.remove();
+      emptyImages++;
+    });
     const fragment = sanitizeArticle(root.innerHTML ?? [...root.childNodes].map(node => node.outerHTML || node.textContent).join(''), { baseUrl: sourceUrl });
+    fragment._emptyImageCount = emptyImages;
     if (!fragment.textContent.trim() && !fragment.querySelector('img')) throw new Error('网页没有可读取的正文，请打开文章后复制全文粘贴');
     const firstText = fragment.firstElementChild?.textContent.trim() || '';
     if (title && firstText !== title.trim()) {
