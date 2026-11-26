@@ -521,7 +521,7 @@
     .publish-preview-screen [data-wechat-title-part="box"] {
       display: inline !important;
       width: auto !important;
-      padding: 2px 5px !important;
+      padding: 0 !important;
       box-decoration-break: clone;
       -webkit-box-decoration-break: clone;
     }
@@ -1466,7 +1466,7 @@
       .editor-page [data-wechat-title-part="box"] {
         display: inline !important;
         width: auto !important;
-        padding: 2px 5px !important;
+        padding: 0 !important;
         box-decoration-break: clone;
         -webkit-box-decoration-break: clone;
       }
@@ -1596,7 +1596,7 @@
         </div>
         <nav class="toolbar" aria-label="富文本排版工具栏">
           <details class="tool-menu size-tool" id="body-size-menu">
-            <summary aria-label="正文字号" data-tooltip="设置框选内容的正文字号">文<span id="current-body-size" class="visually-hidden">16</span></summary>
+            <summary aria-label="正文字号" data-tooltip="设置框选内容的正文字号">文<span id="current-body-size" class="visually-hidden">15</span></summary>
             <div class="tool-menu-popover">
               <button type="button" data-body-size="14">14</button>
               <button type="button" data-body-size="15">15</button>
@@ -1854,7 +1854,7 @@
       };
       let selectedFontStack = FONT_STACKS.system;
       let selectedFontKey = 'system';
-      let currentBodySize = 16;
+      let currentBodySize = 15;
       let currentTitleSize = 24;
       let currentTitleColor = DEFAULT_THEME_COLOR;
       let currentAccentColor = DEFAULT_THEME_COLOR;
@@ -1910,9 +1910,9 @@
         { id: 'dark', label: '黑夜', icon: '☾' }
       ];
       const BUILTIN_THEMES = [
-        { id: 'navy', name: '阅读蓝', bodySize: 16, titleSize: 24, indent: 8, fontKey: 'heiti', themeColor: '#163a5f', spacing: { letter: 'medium', line: 'medium', paragraph: 'medium' } },
+        { id: 'navy', name: '阅读蓝', bodySize: 15, titleSize: 24, indent: 8, fontKey: 'heiti', themeColor: '#163a5f', spacing: { letter: 'medium', line: 'medium', paragraph: 'medium' } },
         { id: 'editorial', name: '杂志紫', bodySize: 15, titleSize: 24, indent: 8, fontKey: 'songti', themeColor: '#6c4b8c', spacing: { letter: 'medium', line: 'medium', paragraph: 'medium' } },
-        { id: 'classic', name: '经典橘', bodySize: 16, titleSize: 32, indent: 8, fontKey: 'system', themeColor: '#ff6827', spacing: { letter: 'medium', line: 'medium', paragraph: 'medium' } }
+        { id: 'classic', name: '经典橘', bodySize: 15, titleSize: 24, indent: 8, fontKey: 'system', themeColor: '#ff6827', spacing: { letter: 'medium', line: 'medium', paragraph: 'medium' } }
       ];
 
       const AGENT_PROMPT = `你是公众号文章的版序识别与语义排版助手。\n\n原文会和本提示词一起发送给你。\n\n任务：理解全文，识别全文标题、作者、真正存在的摘要或导语、章节标题、章节正文和少量真正重要的句子；不虚构信息、不改变事实，只修正明显的断句或粘贴错误。把结果填入下方 JSON，并将填好的 JSON 直接返回给用户。\n\n必须使用英文半角 JSON 结构标点（" : , { } [ ]），不得用中文弯引号包围键名或字符串。\n\n只返回可被 JSON.parse 解析的 JSON 对象，不要附加解释、Markdown、代码围栏或 HTML：\n{\n  "article_title": "全文标题；没有则为空字符串",\n  "author": "作者姓名；没有则为空字符串",\n  "intro": ["仅填写原文明示或内容明确属于摘要、导语、编者按的自然段；没有则为空数组"],\n  "sections": [\n    {\n      "title": "一、章节标题",\n      "paragraphs": [\n        {\n          "text": "完整的章节正文自然段",\n          "highlights": ["正文中原样出现的完整核心判断句"]\n        }\n      ]\n    }\n  ]\n}\n\n结构规则：\n1. article_title 只填写全文总标题，永远不要在其中添加章节序号。author 只写作者姓名。作者、来源、日期、文章标题和普通开场正文都不得放入 intro。\n2. intro 采用高门槛判断：只有原文明示为“摘要”“导语”“编者按”，或内容明确承担全文概括功能时才填写。仅仅位于第一章之前，不能作为 intro 的判断依据；拿不准时返回空数组，并把相应文字保留为正文。\n3. 不要把摘要、导语、作者信息、来源或普通正文判断成引用。引用只适用于原文中有明确发言者或来源、确实需要读者重视的他人原话；本 JSON 不自动套用引用格式，原话仍按正文保留，是否设为引用由用户手动决定。\n4. paragraphs 一项对应一个完整自然段。没有显式标题时，可根据语义生成克制、准确的小标题。\n5. 每个章节所有 paragraphs 中的 highlights 合计最多 3 句，通常选择 1—2 句；宁缺毋滥。highlights 必须在对应正文中逐字出现，操作台会统一加粗并使用当前主题色呈现。`;
@@ -3478,8 +3478,7 @@
               titleLine.dataset.wechatTitlePart = 'box';
               titleLine.setAttribute(
                 'style',
-                `display:inline;width:auto;margin:0;padding:2px 6px;box-sizing:border-box;` +
-                `box-decoration-break:clone;-webkit-box-decoration-break:clone;` +
+                `margin:0;padding:0;` +
                 `font-size:${currentTitleSize}px;line-height:${currentTitleLineHeight()};letter-spacing:${currentLetterSpacing};` +
                 `background-color:${currentTitleColor};color:#ffffff;font-weight:700;font-family:${selectedFontStack};`
               );
@@ -4677,7 +4676,7 @@
       }
 
       function applyTheme(theme) {
-        currentBodySize = Number(theme.bodySize) || 16;
+        currentBodySize = Number(theme.bodySize) || 15;
         currentTitleSize = Number(theme.titleSize) || 24;
         currentIndent = [8, 16].includes(Number(theme.indent)) ? Number(theme.indent) : 8;
         currentTitleNumberStyle = TITLE_NUMBER_STYLES.includes(theme.titleNumberStyle) ? theme.titleNumberStyle : 'arabic';
@@ -4856,7 +4855,7 @@
         });
         const titleMetrics = metrics.filter((item) => item.size >= 20 && item.text.length <= 60);
         const bodyMetrics = metrics.filter((item) => item.size >= 12 && item.size < 20 && item.text.length >= 12);
-        const bodySizeRaw = Number(mode(bodyMetrics.map((item) => Math.round(item.size)))) || 16;
+        const bodySizeRaw = Number(mode(bodyMetrics.map((item) => Math.round(item.size)))) || 15;
         const titleSizeRaw = Number(mode(titleMetrics.map((item) => Math.round(item.size)))) || 24;
         const bilateralIndentRaw = Number(mode(bodyMetrics.map((item) => Math.round((item.marginLeft + item.marginRight) / 2)))) || 8;
         const bodyFont = mode(bodyMetrics.map((item) => item.fontFamily)) || FONT_STACKS.system;
