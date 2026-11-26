@@ -1604,7 +1604,7 @@
             </div>
           </details>
           <details class="tool-menu size-tool" id="title-size-menu">
-            <summary aria-label="标题字号" data-tooltip="设置框选内容为章节标题">标<span id="current-title-size" class="visually-hidden">32</span></summary>
+            <summary aria-label="标题字号" data-tooltip="设置框选内容为章节标题">标<span id="current-title-size" class="visually-hidden">24</span></summary>
             <div class="tool-menu-popover">
               <button type="button" data-title-size="22">22</button>
               <button type="button" data-title-size="24">24</button>
@@ -1855,7 +1855,7 @@
       let selectedFontStack = FONT_STACKS.system;
       let selectedFontKey = 'system';
       let currentBodySize = 16;
-      let currentTitleSize = 32;
+      let currentTitleSize = 24;
       let currentTitleColor = DEFAULT_THEME_COLOR;
       let currentAccentColor = DEFAULT_THEME_COLOR;
       let currentTitleNumberStyle = 'chinese-box';
@@ -4678,7 +4678,7 @@
 
       function applyTheme(theme) {
         currentBodySize = Number(theme.bodySize) || 16;
-        currentTitleSize = Number(theme.titleSize) || 32;
+        currentTitleSize = Number(theme.titleSize) || 24;
         currentIndent = [8, 16].includes(Number(theme.indent)) ? Number(theme.indent) : 8;
         currentTitleNumberStyle = TITLE_NUMBER_STYLES.includes(theme.titleNumberStyle) ? theme.titleNumberStyle : 'arabic';
         selectedFontKey = FONT_STACKS[theme.fontKey] ? theme.fontKey : 'system';
@@ -4857,7 +4857,7 @@
         const titleMetrics = metrics.filter((item) => item.size >= 20 && item.text.length <= 60);
         const bodyMetrics = metrics.filter((item) => item.size >= 12 && item.size < 20 && item.text.length >= 12);
         const bodySizeRaw = Number(mode(bodyMetrics.map((item) => Math.round(item.size)))) || 16;
-        const titleSizeRaw = Number(mode(titleMetrics.map((item) => Math.round(item.size)))) || 32;
+        const titleSizeRaw = Number(mode(titleMetrics.map((item) => Math.round(item.size)))) || 24;
         const bilateralIndentRaw = Number(mode(bodyMetrics.map((item) => Math.round((item.marginLeft + item.marginRight) / 2)))) || 8;
         const bodyFont = mode(bodyMetrics.map((item) => item.fontFamily)) || FONT_STACKS.system;
         const titleColor = mode(titleMetrics.map((item) => item.color)) || ORANGE;
